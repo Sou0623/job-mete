@@ -1,0 +1,31 @@
+開発を開始する際の推奨順序：
+Phase 1: 環境構築（1週目）
+
+Firebase プロジェクト作成
+Emulators セットアップ
+→ここまで完了している
+React プロジェクト初期化
+基本的なディレクトリ構造作成
+
+
+Phase 2: 認証基盤（1週目）
+
+Firebase Authentication 設定
+ログイン画面実装
+認証フロー実装
+ProtectedRoute 実装
+
+Phase 3: 企業管理（2週目）
+
+Firestore コレクション作成
+企業登録API実装
+企業一覧・詳細画面実装
+Gemini API統合
+
+Phase 4以降
+
+データベース設計書に従ってFirestoreを構築
+API設計書に従ってFunctionsを実装
+サイトマップ設計書に従って画面を作成
+
+

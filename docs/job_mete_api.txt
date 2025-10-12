@@ -1,0 +1,807 @@
+# 🔌 Job Mete API設計書 v1.5
+
+---
+
+## 1. API概要
+
+### 1.1 APIアーキテクチャ
+
+**方式:** Firebase Cloud Functions (HTTPS Callable)
+
+**特徴:**
+- ✅ 自動的な認証チェック（context.auth）
+- ✅ 型安全なリクエスト/レスポンス
+- ✅ クライアントSDKとの統合
+- ✅ エラーハンドリングの標準化
+- ✅ リトライメカニズム
+
+**Base URL（ローカル開発）:**
+```
+http://localhost:5001/{project-id}/{region}/
+```
+
+**Base URL（本番環境・将来）:**
+```
+https://{region}-{project-id}.cloudfunctions.net/
+```
+
+---
+
+## 2. 認証と認可
+
+### 2.1 認証方式
+
+**採用:** Firebase Authentication ID Token
+
+**フロー:**
+```
+[クライアント]
+    ↓ Firebase SDK
+[Firebase Auth] → ID Token生成
+    ↓
+[HTTPS Callable Function]
+    ↓ context.auth自動検証
+[関数実行]
+```
+
+### 2.2 認可チェック
+
+```typescript
+// 全てのFunctionで実行
+if (!context.auth) {
+  throw new functions.https.HttpsError(
+    'unauthenticated',
+    'ログインが必要です'
+  );
+}
+
+const userId = context.auth.uid;
+```
+
+---
+
+## 3. エラーハンドリング
+
+### 3.1 エラーコード一覧
+
+| コード | 意味 | HTTPステータス | 使用例 |
+|-------|------|--------------|--------|
+| `unauthenticated` | 認証エラー | 401 | ログインしていない |
+| `permission-denied` | 権限エラー | 403 | 他人のデータにアクセス |
+| `not-found` | リソース不在 | 404 | 企業IDが存在しない |
+| `already-exists` | 重複エラー | 409 | 企業が既に登録済み |
+| `invalid-argument` | 引数エラー | 400 | 必須パラメータ不足 |
+| `resource-exhausted` | レート制限 | 429 | API上限到達 |
+| `internal` | サーバーエラー | 500 | 予期しないエラー |
+
+### 3.2 エラーレスポンス形式
+
+```typescript
+{
+  code: string;           // エラーコード
+  message: string;        // エラーメッセージ（日本語）
+  details?: any;          // 追加情報（オプション）
+}
+```
+
+**例:**
+```json
+{
+  "code": "already-exists",
+  "message": "この企業は既に登録されています",
+  "details": {
+    "existingCompanyId": "company_abc123",
+    "normalizedName": "こどもん"
+  }
+}
+```
+
+---
+
+## 4. API仕様
+
+### 4.1 企業管理API
+
+---
+
+#### 📌 POST /createCompany
+
+**説明:** 企業を新規登録し、Gemini APIで企業分析を実行
+
+**リクエスト:**
+```typescript
+{
+  companyName: string;      // 必須: 企業名
+  forceCreate?: boolean;    // オプション: 重複時も強制作成（デフォルト: false）
+}
+```
+
+**レスポンス（成功時）:**
+```typescript
+{
+  success: true;
+  isDuplicate: false;
+  companyId: string;        // 作成された企業ID
+  analysis: {               // Gemini分析結果
+    businessOverview: string;
+    strengths: string[];
+    recentNews: string;
+    industryPosition: string;
+    recruitmentInsights: string;
+  };
+}
+```
+
+**レスポンス（重複検出時）:**
+```typescript
+{
+  success: false;
+  isDuplicate: true;
+  existingCompany: {
+    id: string;
+    companyName: string;
+    normalizedName: string;
+    createdAt: string;
+    stats: {
+      eventCount: number;
+    };
+  };
+}
+```
+
+**エラー:**
+- `invalid-argument`: companyNameが空
+- `resource-exhausted`: API使用量上限
+- `internal`: Gemini API エラー
+
+**実装例:**
+```typescript
+import { httpsCallable } from 'firebase/functions';
+
+const createCompany = httpsCallable(functions, 'createCompany');
+const result = await createCompany({ 
+  companyName: '株式会社コドモン' 
+});
+
+if (result.data.success) {
+  console.log('企業ID:', result.data.companyId);
+} else if (result.data.isDuplicate) {
+  // 重複確認ダイアログ表示
+}
+```
+
+---
+
+#### 📌 POST /reanalyzeCompany
+
+**説明:** 企業情報を最新データで再分析
+
+**リクエスト:**
+```typescript
+{
+  companyId: string;        // 必須: 企業ID
+}
+```
+
+**レスポンス:**
+```typescript
+{
+  success: true;
+  analysis: {
+    businessOverview: string;
+    strengths: string[];
+    recentNews: string;
+    industryPosition: string;
+    recruitmentInsights: string;
+  };
+  analyzedAt: string;       // ISO 8601形式
+}
+```
+
+**エラー:**
+- `not-found`: 企業IDが存在しない
+- `resource-exhausted`: 1日10回の上限到達
+- `internal`: Gemini API エラー
+
+**実装例:**
+```typescript
+const reanalyzeCompany = httpsCallable(functions, 'reanalyzeCompany');
+const result = await reanalyzeCompany({ 
+  companyId: 'company_abc123' 
+});
+
+console.log('再分析完了:', result.data.analyzedAt);
+```
+
+---
+
+#### 📌 POST /deleteCompany
+
+**説明:** 企業データと関連予定を一括削除
+
+**リクエスト:**
+```typescript
+{
+  companyId: string;        // 必須: 企業ID
+}
+```
+
+**レスポンス:**
+```typescript
+{
+  success: true;
+  deletedEventCount: number;  // 削除された予定数
+}
+```
+
+**エラー:**
+- `not-found`: 企業IDが存在しない
+
+**実装例:**
+```typescript
+const deleteCompany = httpsCallable(functions, 'deleteCompany');
+const result = await deleteCompany({ 
+  companyId: 'company_abc123' 
+});
+
+console.log('削除された予定数:', result.data.deletedEventCount);
+```
+
+---
+
+### 4.2 予定管理API
+
+---
+
+#### 📌 POST /createEvent
+
+**説明:** 予定を登録し、Googleカレンダーに同期
+
+**リクエスト:**
+```typescript
+{
+  companyName: string;      // 必須: 企業名（既存 or 新規）
+  eventType: string;        // 必須: イベント種別
+  date: string;             // 必須: 開始日時（ISO 8601）
+  endDate: string;          // 必須: 終了日時（ISO 8601）
+  location?: string;        // オプション: 場所
+  memo?: string;            // オプション: メモ
+  syncToCalendar?: boolean; // オプション: Calendar同期（デフォルト: true）
+}
+```
+
+**レスポンス:**
+```typescript
+{
+  success: true;
+  eventId: string;          // 作成された予定ID
+  companyId: string;        // 企業ID（新規作成 or 既存）
+  calendarEventId?: string; // GoogleカレンダーのEventID
+  calendarSyncStatus: 'synced' | 'pending' | 'failed';
+}
+```
+
+**エラー:**
+- `invalid-argument`: 必須パラメータ不足
+- `internal`: Calendar API エラー
+
+**実装例:**
+```typescript
+const createEvent = httpsCallable(functions, 'createEvent');
+const result = await createEvent({
+  companyName: '株式会社コドモン',
+  eventType: '一次面接',
+  date: '2025-10-15T13:00:00+09:00',
+  endDate: '2025-10-15T14:00:00+09:00',
+  location: 'オンライン（Zoom）',
+  memo: '担当：佐藤様',
+  syncToCalendar: true
+});
+
+console.log('予定ID:', result.data.eventId);
+```
+
+---
+
+#### 📌 POST /updateEvent
+
+**説明:** 予定を更新し、Googleカレンダーにも反映
+
+**リクエスト:**
+```typescript
+{
+  eventId: string;          // 必須: 予定ID
+  updates: {                // 更新内容
+    eventType?: string;
+    date?: string;
+    endDate?: string;
+    location?: string;
+    memo?: string;
+    status?: string;
+    result?: string;
+    resultMemo?: string;
+  };
+}
+```
+
+**レスポンス:**
+```typescript
+{
+  success: true;
+  calendarSyncStatus: 'synced' | 'pending' | 'failed';
+}
+```
+
+**エラー:**
+- `not-found`: 予定IDが存在しない
+- `internal`: Calendar API エラー
+
+**実装例:**
+```typescript
+const updateEvent = httpsCallable(functions, 'updateEvent');
+await updateEvent({
+  eventId: 'event_xyz789',
+  updates: {
+    status: 'completed',
+    result: 'passed',
+    resultMemo: '技術面接通過！'
+  }
+});
+```
+
+---
+
+#### 📌 POST /deleteEvent
+
+**説明:** 予定を削除し、Googleカレンダーからも削除
+
+**リクエスト:**
+```typescript
+{
+  eventId: string;          // 必須: 予定ID
+}
+```
+
+**レスポンス:**
+```typescript
+{
+  success: true;
+  companyDeleted: boolean;  // 企業データも削除されたか
+}
+```
+
+**エラー:**
+- `not-found`: 予定IDが存在しない
+
+**実装例:**
+```typescript
+const deleteEvent = httpsCallable(functions, 'deleteEvent');
+const result = await deleteEvent({ 
+  eventId: 'event_xyz789' 
+});
+
+if (result.data.companyDeleted) {
+  console.log('企業データも削除されました');
+}
+```
+
+---
+
+### 4.3 傾向分析API
+
+---
+
+#### 📌 POST /analyzeTrends
+
+**説明:** 登録企業群から志望傾向を分析
+
+**リクエスト:**
+```typescript
+{
+  // パラメータなし
+}
+```
+
+**レスポンス:**
+```typescript
+{
+  success: true;
+  summary: {
+    overallTrend: string;   // AIによる全体傾向（200文字）
+    topIndustries: Array<{
+      name: string;
+      count: number;
+      percentage: number;
+    }>;
+    commonKeywords: Array<{
+      word: string;
+      count: number;
+    }>;
+    recommendedSkills: string[];
+  };
+  analyzedAt: string;
+  companyCount: number;
+}
+```
+
+**エラー:**
+- `invalid-argument`: 企業数が3社未満
+- `resource-exhausted`: 1日10回の上限到達
+- `internal`: Gemini API エラー
+
+**実装例:**
+```typescript
+const analyzeTrends = httpsCallable(functions, 'analyzeTrends');
+
+try {
+  const result = await analyzeTrends({});
+  console.log('傾向:', result.data.summary.overallTrend);
+  console.log('業界分布:', result.data.summary.topIndustries);
+} catch (error: any) {
+  if (error.code === 'invalid-argument') {
+    alert('分析には3社以上の企業登録が必要です');
+  } else if (error.code === 'resource-exhausted') {
+    alert('本日の分析回数上限に達しました');
+  }
+}
+```
+
+---
+
+### 4.4 カレンダー同期API（内部用）
+
+---
+
+#### 📌 POST /syncToCalendar
+
+**説明:** 予定をGoogleカレンダーに同期（内部Function）
+
+**リクエスト:**
+```typescript
+{
+  eventId: string;
+  eventData: {
+    companyName: string;
+    eventType: string;
+    date: string;
+    endDate: string;
+    location?: string;
+    memo?: string;
+  };
+}
+```
+
+**レスポンス:**
+```typescript
+{
+  success: true;
+  calendarEventId: string;
+}
+```
+
+**注意:** このFunctionは他のFunction内部から呼び出されます。クライアントから直接呼び出すことはありません。
+
+---
+
+#### 📌 POST /retryCalendarSync
+
+**説明:** カレンダー同期失敗時の自動リトライ（Firestore Trigger）
+
+**トリガー:** `events/{eventId}` の `googleCalendar.syncStatus` が `'failed'` に更新されたとき
+
+**動作:**
+1. 5分後、30分後、1時間後に自動リトライ
+2. 3回失敗したら諦めて、ユーザーに手動再同期を促す
+
+---
+
+## 5. レート制限
+
+### 5.1 制限値
+
+| API | 制限 | 期間 | 制限超過時 |
+|-----|------|------|-----------|
+| createCompany | なし | - | - |
+| reanalyzeCompany | 10回 | 1日 | `resource-exhausted` |
+| analyzeTrends | 10回 | 1日 | `resource-exhausted` |
+| createEvent | なし | - | - |
+| updateEvent | なし | - | - |
+| deleteEvent | なし | - | - |
+
+### 5.2 実装方法
+
+```typescript
+// utils/checkUsageLimit.ts
+export async function checkUsageLimit(
+  userId: string,
+  type: 'reAnalysis' | 'trendAnalysis',
+  limit: number = 10
+): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  const usageRef = db.doc(`users/${userId}/usage/today`);
+  const usageDoc = await usageRef.get();
+  
+  if (!usageDoc.exists) {
+    return; // 初回実行
+  }
+  
+  const data = usageDoc.data();
+  if (data.date !== today) {
+    return; // 日付が変わった（リセット）
+  }
+  
+  const count = data.counts?.[type] || 0;
+  if (count >= limit) {
+    throw new functions.https.HttpsError(
+      'resource-exhausted',
+      `本日の${type === 'trendAnalysis' ? '傾向分析' : '再分析'}回数上限に達しました`
+    );
+  }
+}
+```
+
+---
+
+## 6. パフォーマンス最適化
+
+### 6.1 タイムアウト設定
+
+```typescript
+// functions/src/index.ts
+export const createCompany = functions
+  .runWith({
+    timeoutSeconds: 60,    // 最大60秒
+    memory: '512MB'        // メモリ512MB
+  })
+  .https.onCall(async (data, context) => {
+    // ...
+  });
+```
+
+### 6.2 並列処理
+
+```typescript
+// 複数のAPI呼び出しを並列化
+const [companyData, calendarResult] = await Promise.all([
+  createCompanyInFirestore(data),
+  syncToGoogleCalendar(data)
+]);
+```
+
+### 6.3 リトライロジック
+
+```typescript
+// utils/retry.ts
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3
+): Promise<T> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      if (i === maxRetries - 1) throw error;
+      
+      // Exponential Backoff
+      const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+```
+
+---
+
+## 7. モニタリングとロギング
+
+### 7.1 ログ出力標準
+
+```typescript
+import * as functions from 'firebase-functions';
+
+export const createCompany = functions.https.onCall(async (data, context) => {
+  const startTime = Date.now();
+  const userId = context.auth?.uid;
+  
+  // 開始ログ
+  functions.logger.info('createCompany started', {
+    userId,
+    companyName: data.companyName
+  });
+
+  try {
+    // 処理...
+    
+    // 成功ログ
+    functions.logger.info('createCompany succeeded', {
+      userId,
+      duration: Date.now() - startTime,
+      companyId: result.companyId
+    });
+    
+    return result;
+    
+  } catch (error: any) {
+    // エラーログ
+    functions.logger.error('createCompany failed', {
+      userId,
+      error: error.message,
+      stack: error.stack,
+      duration: Date.now() - startTime
+    });
+    
+    throw error;
+  }
+});
+```
+
+### 7.2 監視メトリクス
+
+| メトリクス | 取得方法 | アラート条件 |
+|----------|---------|------------|
+| 実行回数 | Cloud Functions logs | > 1000/日 |
+| 平均実行時間 | Cloud Functions logs | > 10秒 |
+| エラー率 | Cloud Functions logs | > 5% |
+| タイムアウト回数 | Cloud Functions logs | > 10/日 |
+
+---
+
+## 8. テスト戦略
+
+### 8.1 ユニットテスト
+
+```typescript
+// functions/src/__tests__/createCompany.test.ts
+import { createCompany } from '../handlers/companies/createCompany';
+
+describe('createCompany', () => {
+  it('企業を正常に登録できる', async () => {
+    const data = { companyName: '株式会社テスト' };
+    const context = { auth: { uid: 'test_user_id' } };
+    
+    const result = await createCompany(data, context);
+    
+    expect(result.success).toBe(true);
+    expect(result.companyId).toBeDefined();
+  });
+
+  it('重複企業を検出できる', async () => {
+    // 1回目: 正常登録
+    await createCompany({ companyName: '株式会社テスト' }, context);
+    
+    // 2回目: 重複検出
+    const result = await createCompany({ companyName: 'テスト' }, context);
+    
+    expect(result.isDuplicate).toBe(true);
+  });
+});
+```
+
+### 8.2 統合テスト
+
+```typescript
+// エミュレータ環境でのE2Eテスト
+describe('予定登録フロー', () => {
+  it('企業登録 → 予定登録 → Calendar同期が正常に動作する', async () => {
+    // 1. 企業登録
+    const companyResult = await createCompany({ 
+      companyName: '株式会社テスト' 
+    });
+    
+    // 2. 予定登録
+    const eventResult = await createEvent({
+      companyName: '株式会社テスト',
+      eventType: '一次面接',
+      date: '2025-10-15T13:00:00+09:00',
+      endDate: '2025-10-15T14:00:00+09:00'
+    });
+    
+    expect(eventResult.success).toBe(true);
+    expect(eventResult.calendarSyncStatus).toBe('synced');
+  });
+});
+```
+
+---
+
+## 9. バージョニング
+
+### 9.1 APIバージョン管理（将来）
+
+現在はv1のみですが、将来的には以下のようにバージョン分離:
+
+```typescript
+// v1
+export const createCompany_v1 = functions.https.onCall(...);
+
+// v2（将来）
+export const createCompany_v2 = functions.https.onCall(...);
+```
+
+### 9.2 非推奨ポリシー
+
+1. 新バージョンリリース
+2. 旧バージョンを3ヶ月間並行運用
+3. クライアントに移行通知
+4. 旧バージョン削除
+
+---
+
+## 10. セキュリティ
+
+### 10.1 入力バリデーション
+
+```typescript
+function validateCreateCompanyRequest(data: any): void {
+  if (!data.companyName || typeof data.companyName !== 'string') {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      '企業名は必須です'
+    );
+  }
+  
+  if (data.companyName.length > 100) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      '企業名は100文字以内で入力してください'
+    );
+  }
+}
+```
+
+### 10.2 SQLインジェクション対策
+
+Firestoreはパラメータ化クエリを使用するため、基本的に安全。
+
+```typescript
+// 安全なクエリ
+db.collection('companies')
+  .where('normalizedName', '==', userInput)  // ✅ 安全
+  .get();
+```
+
+---
+
+## 11. ドキュメント生成
+
+### 11.1 OpenAPI（Swagger）仕様（将来）
+
+Firebase Cloud Functionsは直接OpenAPIをサポートしていませんが、手動でドキュメント生成可能:
+
+```yaml
+openapi: 3.0.0
+info:
+  title: Job Mete API
+  version: 1.5.0
+paths:
+  /createCompany:
+    post:
+      summary: 企業を登録
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                companyName:
+                  type: string
+      responses:
+        '200':
+          description: 成功
+```
+
+---
+
+## 12. まとめ
+
+本API設計書は、Job Mete v1.5の全てのAPI仕様を網羅しています。
+
+**重要なAPI設計判断:**
+1. **HTTPS Callable:** 型安全性と自動認証
+2. **エラーコード標準化:** 一貫したエラーハンドリング
+3. **レート制限:** API使用量の適切な管理
+4. **リトライロジック:** 外部API障害への対応
+5. **詳細なログ:** トラブルシューティングの容易化
+
+このAPI設計により、クライアントとサーバー間の通信が安全かつ効率的に行われます。

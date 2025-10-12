@@ -1,0 +1,1541 @@
+# 🛠️ Job Mete 実装ガイド v1.5
+
+---
+
+## 目次
+
+1. [コーディング規約](#1-コーディング規約)
+2. [ディレクトリ構造](#2-ディレクトリ構造)
+3. [コンポーネント設計パターン](#3-コンポーネント設計パターン)
+4. [状態管理](#4-状態管理)
+5. [スタイリング規約](#5-スタイリング規約)
+6. [命名規則](#6-命名規則)
+7. [テスト戦略](#7-テスト戦略)
+8. [パフォーマンス最適化](#8-パフォーマンス最適化)
+
+---
+
+## 1. コーディング規約
+
+### 1.1 基本原則
+
+#### ✅ 守るべき原則
+
+1. **DRY（Don't Repeat Yourself）**
+   - 同じコードは書かない
+   - 共通処理は関数/コンポーネント化
+
+2. **KISS（Keep It Simple, Stupid）**
+   - シンプルで理解しやすいコードを書く
+   - 過度な抽象化を避ける
+
+3. **YAGNI（You Aren't Gonna Need It）**
+   - 必要になるまで実装しない
+   - 将来の拡張性より現在の明確性を優先
+
+4. **Single Responsibility Principle**
+   - 1つの関数/コンポーネントは1つの責務のみ
+   - 複雑な処理は分割する
+
+---
+
+### 1.2 TypeScript規約
+
+#### 型定義
+
+```typescript
+// ✅ 良い例：明示的な型定義
+interface Company {
+  id: string;
+  companyName: string;
+  normalizedName: string;
+  analysis: CompanyAnalysis;
+  createdAt: string;
+}
+
+// ✅ 良い例：型エイリアスの使用
+type EventType = 
+  | '一次面接' 
+  | '二次面接' 
+  | '最終面接' 
+  | '説明会' 
+  | 'インターン' 
+  | 'カジュアル面談' 
+  | 'その他';
+
+// ❌ 悪い例：any の使用
+const data: any = fetchData(); // 避ける
+
+// ✅ 良い例：unknown を使用して型安全に
+const data: unknown = fetchData();
+if (isCompanyData(data)) {
+  // 型ガードで安全に使用
+}
+```
+
+#### 型ガード
+
+```typescript
+// 型ガード関数を定義
+function isCompanyData(data: unknown): data is Company {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'id' in data &&
+    'companyName' in data
+  );
+}
+```
+
+#### Enum vs Union Type
+
+```typescript
+// ✅ 推奨：Union Typeを使用（軽量）
+type Status = 'scheduled' | 'completed' | 'cancelled';
+
+// ❌ 避ける：Enumは使わない（バンドルサイズ増加）
+enum Status {
+  Scheduled = 'scheduled',
+  Completed = 'completed',
+  Cancelled = 'cancelled'
+}
+```
+
+---
+
+### 1.3 React規約
+
+#### 関数コンポーネント
+
+```typescript
+// ✅ 良い例：関数コンポーネント（Arrowではなく宣言）
+export default function CompanyCard({ company }: Props) {
+  return (
+    <div className="...">
+      {/* ... */}
+    </div>
+  );
+}
+
+// ❌ 悪い例：Arrow関数コンポーネント（デバッグしにくい）
+export default ({ company }: Props) => {
+  return <div>...</div>;
+};
+```
+
+#### Props定義
+
+```typescript
+// ✅ 良い例：interface で Props を定義
+interface CompanyCardProps {
+  company: Company;
+  onDetail: (id: string) => void;
+  onAddEvent?: (id: string) => void; // オプショナル
+}
+
+export default function CompanyCard({ 
+  company, 
+  onDetail, 
+  onAddEvent 
+}: CompanyCardProps) {
+  // ...
+}
+```
+
+#### Hooks の使用順序
+
+```typescript
+// ✅ 良い例：Hooksは常にトップレベルで呼び出す
+function MyComponent() {
+  // 1. useState
+  const [data, setData] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  // 2. useContext
+  const { user } = useAuth();
+  
+  // 3. useRef
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  // 4. useEffect
+  useEffect(() => {
+    fetchData();
+  }, []);
+  
+  // 5. カスタムHooks
+  const companies = useCompanies();
+  
+  // ...
+}
+```
+
+#### 条件付きレンダリング
+
+```typescript
+// ✅ 良い例：Early Return
+function CompanyDetail({ companyId }: Props) {
+  const company = useCompany(companyId);
+  
+  if (!company) {
+    return <div>読み込み中...</div>;
+  }
+  
+  return (
+    <div>
+      <h1>{company.companyName}</h1>
+      {/* ... */}
+    </div>
+  );
+}
+
+// ❌ 悪い例：ネストが深い
+function CompanyDetail({ companyId }: Props) {
+  const company = useCompany(companyId);
+  
+  return (
+    <div>
+      {company ? (
+        <div>
+          <h1>{company.companyName}</h1>
+          {/* ... */}
+        </div>
+      ) : (
+        <div>読み込み中...</div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+### 1.4 Firebase規約
+
+#### Firestore操作
+
+```typescript
+// ✅ 良い例：型安全なFirestore操作
+import { collection, query, where, getDocs } from 'firebase/firestore';
+
+async function fetchCompanies(userId: string): Promise<Company[]> {
+  const companiesRef = collection(db, 'users', userId, 'companies');
+  const q = query(companiesRef, where('analysisMetadata.status', '==', 'completed'));
+  const snapshot = await getDocs(q);
+  
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  } as Company));
+}
+
+// ❌ 悪い例：型安全でない
+async function fetchCompanies(userId: string) {
+  const snapshot = await db
+    .collection(`users/${userId}/companies`)
+    .get();
+  
+  return snapshot.docs.map(doc => doc.data()); // 型なし
+}
+```
+
+#### Functions呼び出し
+
+```typescript
+// ✅ 良い例：型付きFunctions呼び出し
+import { httpsCallable } from 'firebase/functions';
+
+interface CreateCompanyRequest {
+  companyName: string;
+  forceCreate?: boolean;
+}
+
+interface CreateCompanyResponse {
+  success: boolean;
+  companyId?: string;
+  isDuplicate?: boolean;
+}
+
+async function createCompany(data: CreateCompanyRequest) {
+  const fn = httpsCallable<CreateCompanyRequest, CreateCompanyResponse>(
+    functions,
+    'createCompany'
+  );
+  
+  const result = await fn(data);
+  return result.data;
+}
+```
+
+---
+
+### 1.5 エラーハンドリング
+
+#### try-catch の使用
+
+```typescript
+// ✅ 良い例：適切なエラーハンドリング
+async function handleCreateCompany(companyName: string) {
+  try {
+    setLoading(true);
+    setError(null);
+    
+    const result = await createCompany({ companyName });
+    
+    if (result.success) {
+      showSuccessToast('企業を登録しました');
+      navigate(`/companies/${result.companyId}`);
+    } else if (result.isDuplicate) {
+      setDuplicateInfo(result.existingCompany);
+    }
+  } catch (error) {
+    console.error('企業登録エラー:', error);
+    
+    if (error instanceof FirebaseError) {
+      setError(getFirebaseErrorMessage(error.code));
+    } else {
+      setError('予期しないエラーが発生しました');
+    }
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ヘルパー関数
+function getFirebaseErrorMessage(code: string): string {
+  const messages: Record<string, string> = {
+    'unauthenticated': 'ログインが必要です',
+    'permission-denied': 'アクセス権限がありません',
+    'resource-exhausted': 'API使用量の上限に達しました',
+  };
+  
+  return messages[code] || 'エラーが発生しました';
+}
+```
+
+---
+
+### 1.6 コメント規約
+
+#### JSDoc形式
+
+```typescript
+/**
+ * 企業名を正規化して重複チェック用の文字列を生成
+ * 
+ * @param name - 企業名（例: "株式会社コドモン"）
+ * @returns 正規化された企業名（例: "こどもん"）
+ * 
+ * @example
+ * normalizeCompanyName("株式会社コドモン") // => "こどもん"
+ * normalizeCompanyName("コドモン") // => "こどもん"
+ */
+export function normalizeCompanyName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/株式会社|かぶしきがいしゃ|㈱/g, '')
+    .replace(/\s+/g, '')
+    .replace(/[\.、。・]/g, '');
+}
+```
+
+#### インラインコメント
+
+```typescript
+// ✅ 良い例：「なぜ」を説明するコメント
+// Gemini APIは429エラーを返すことがあるため、リトライが必要
+await retryWithBackoff(() => geminiApi.analyze(companyName));
+
+// ❌ 悪い例：「何を」しているかのコメント（コード自体で明らか）
+// iを1増やす
+i++;
+```
+
+---
+
+## 2. ディレクトリ構造
+
+### 2.1 プロジェクト全体構造
+
+```
+job-mete/
+├── public/                          # 静的ファイル
+│   ├── index.html
+│   ├── favicon.ico
+│   └── manifest.json
+│
+├── src/                             # ソースコード
+│   ├── components/                  # Reactコンポーネント
+│   ├── pages/                       # ページコンポーネント
+│   ├── hooks/                       # カスタムHooks
+│   ├── contexts/                    # Reactコンテキスト
+│   ├── services/                    # 外部サービス連携
+│   ├── utils/                       # ユーティリティ関数
+│   ├── types/                       # TypeScript型定義
+│   ├── constants/                   # 定数
+│   ├── App.tsx                      # アプリルート
+│   ├── index.tsx                    # エントリーポイント
+│   └── index.css                    # グローバルCSS（Tailwind）
+│
+├── functions/                       # Firebase Functions
+│   ├── src/
+│   │   ├── handlers/                # 各種ハンドラー
+│   │   ├── services/                # サービスレイヤー
+│   │   ├── utils/                   # ユーティリティ
+│   │   ├── prompts/                 # Geminiプロンプト
+│   │   ├── types/                   # 型定義
+│   │   └── index.ts                 # エントリーポイント
+│   ├── package.json
+│   └── tsconfig.json
+│
+├── docs/                            # 設計ドキュメント
+│   ├── requirements.md              # 要件定義書
+│   ├── architecture.md              # アーキテクチャ設計
+│   ├── database.md                  # データベース設計
+│   ├── api.md                       # API設計
+│   ├── sitemap.md                   # サイトマップ設計
+│   └── implementation-guide.md      # 実装ガイド
+│
+├── .env.local                       # 環境変数（Git非管理）
+├── .gitignore
+├── firebase.json                    # Firebase設定
+├── firestore.rules                  # Firestoreセキュリティルール
+├── package.json
+├── tsconfig.json
+├── tailwind.config.js
+├── CLAUDE.md                        # Claude Code用設定
+└── README.md
+```
+
+---
+
+### 2.2 src/components/ の構造
+
+```
+src/components/
+├── common/                          # 汎用コンポーネント
+│   ├── Button.tsx                   # ボタン
+│   ├── Input.tsx                    # 入力フィールド
+│   ├── Modal.tsx                    # モーダル
+│   ├── Loading.tsx                  # ローディングスピナー
+│   ├── Toast.tsx                    # 通知トースト
+│   ├── ErrorBoundary.tsx            # エラーバウンダリ
+│   └── index.ts                     # エクスポート
+│
+├── layout/                          # レイアウトコンポーネント
+│   ├── Header.tsx                   # ヘッダー
+│   ├── Footer.tsx                   # フッター
+│   ├── Sidebar.tsx                  # サイドバー
+│   ├── BottomNavigation.tsx         # モバイル用ボトムナビ
+│   ├── AppLayout.tsx                # メインレイアウト
+│   └── index.ts
+│
+├── companies/                       # 企業関連コンポーネント
+│   ├── CompanyCard.tsx              # 企業カード
+│   ├── CompanyList.tsx              # 企業一覧
+│   ├── CompanyDetail.tsx            # 企業詳細
+│   ├── CompanyForm.tsx              # 企業登録フォーム
+│   ├── CompanyAnalysis.tsx          # 企業分析表示
+│   ├── DuplicateWarning.tsx         # 重複警告
+│   └── index.ts
+│
+├── events/                          # 予定関連コンポーネント
+│   ├── EventCard.tsx                # 予定カード
+│   ├── EventList.tsx                # 予定一覧
+│   ├── EventForm.tsx                # 予定登録フォーム
+│   ├── EventCalendar.tsx            # カレンダー表示
+│   ├── EventDetail.tsx              # 予定詳細
+│   └── index.ts
+│
+└── trends/                          # 傾向分析コンポーネント
+    ├── TrendChart.tsx               # 傾向チャート
+    ├── IndustryPieChart.tsx         # 業界別円グラフ
+    ├── KeywordCloud.tsx             # キーワードタグクラウド
+    ├── TrendSummary.tsx             # AIサマリー
+    └── index.ts
+```
+
+**ルール:**
+- 各ディレクトリに`index.ts`を配置してエクスポート
+- コンポーネント名 = ファイル名（PascalCase）
+
+---
+
+### 2.3 functions/src/ の構造
+
+```
+functions/src/
+├── handlers/                        # Functionハンドラー
+│   ├── companies/
+│   │   ├── createCompany.ts
+│   │   ├── reanalyzeCompany.ts
+│   │   └── deleteCompany.ts
+│   ├── events/
+│   │   ├── createEvent.ts
+│   │   ├── updateEvent.ts
+│   │   └── deleteEvent.ts
+│   ├── trends/
+│   │   └── analyzeTrends.ts
+│   └── calendar/
+│       ├── syncToCalendar.ts
+│       └── retryCalendarSync.ts
+│
+├── services/                        # サービスレイヤー
+│   ├── geminiService.ts             # Gemini API
+│   ├── calendarService.ts           # Calendar API
+│   ├── firestoreService.ts          # Firestore操作
+│   └── index.ts
+│
+├── utils/                           # ユーティリティ
+│   ├── normalizer.ts                # 正規化処理
+│   ├── validators.ts                # バリデーション
+│   ├── retry.ts                     # リトライロジック
+│   ├── errorHandler.ts              # エラーハンドリング
+│   └── index.ts
+│
+├── prompts/                         # Geminiプロンプト
+│   ├── companyAnalysisPrompt.ts
+│   ├── trendAnalysisPrompt.ts
+│   └── index.ts
+│
+├── types/                           # 型定義
+│   ├── company.ts
+│   ├── event.ts
+│   ├── api.ts
+│   └── index.ts
+│
+├── config/                          # 設定
+│   ├── firebase.ts                  # Firebase Admin初期化
+│   ├── gemini.ts                    # Gemini API設定
+│   └── calendar.ts                  # Calendar API設定
+│
+└── index.ts                         # エントリーポイント（全Function登録）
+```
+
+---
+
+## 3. コンポーネント設計パターン
+
+### 3.1 コンポーネント分類
+
+#### Atomic Design を緩く適用
+
+```
+Atoms（原子）
+  └─ Button, Input, Badge, Spinner
+      ↓
+Molecules（分子）
+  └─ FormField, SearchBar, Card
+      ↓
+Organisms（有機体）
+  └─ CompanyCard, EventCard, Header
+      ↓
+Templates（テンプレート）
+  └─ AppLayout, PageLayout
+      ↓
+Pages（ページ）
+  └─ CompaniesPage, EventsPage
+```
+
+---
+
+### 3.2 コンポーネントテンプレート
+
+#### 基本構造
+
+```typescript
+// src/components/companies/CompanyCard.tsx
+
+import { Company } from '@/types';
+
+/**
+ * 企業カードコンポーネント
+ */
+interface CompanyCardProps {
+  company: Company;
+  onDetail: (id: string) => void;
+  onAddEvent?: (id: string) => void;
+}
+
+export default function CompanyCard({ 
+  company, 
+  onDetail, 
+  onAddEvent 
+}: CompanyCardProps) {
+  // ロジック
+  const daysSinceAnalysis = calculateDaysSince(company.analysisMetadata.analyzedAt);
+  const needsReanalysis = daysSinceAnalysis >= 30;
+  
+  // イベントハンドラー
+  const handleDetailClick = () => {
+    onDetail(company.id);
+  };
+  
+  const handleAddEventClick = () => {
+    onAddEvent?.(company.id);
+  };
+  
+  // レンダリング
+  return (
+    <div className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-gray-900">
+            🏢 {company.companyName}
+          </h3>
+        </div>
+        
+        {needsReanalysis && (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            ⚠️ 再分析推奨
+          </span>
+        )}
+      </div>
+      
+      {/* 以下省略 */}
+    </div>
+  );
+}
+```
+
+---
+
+### 3.3 カスタムHooksパターン
+
+#### データフェッチHook
+
+```typescript
+// src/hooks/useCompanies.ts
+
+import { useState, useEffect } from 'react';
+import { collection, query, onSnapshot } from 'firebase/firestore';
+import { db } from '@/services/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import type { Company } from '@/types';
+
+/**
+ * 企業一覧を取得するカスタムHook
+ * リアルタイム更新対応
+ */
+export function useCompanies() {
+  const { user } = useAuth();
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
+    const companiesRef = collection(db, 'users', user.uid, 'companies');
+    const q = query(companiesRef);
+    
+    // リアルタイム購読
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Company));
+        
+        setCompanies(data);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('企業一覧取得エラー:', err);
+        setError('企業一覧の取得に失敗しました');
+        setLoading(false);
+      }
+    );
+    
+    // クリーンアップ
+    return () => unsubscribe();
+  }, [user]);
+  
+  return { companies, loading, error };
+}
+```
+
+#### API呼び出しHook
+
+```typescript
+// src/hooks/useCreateCompany.ts
+
+import { useState } from 'react';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/services/firebase';
+import type { CreateCompanyRequest, CreateCompanyResponse } from '@/types/api';
+
+/**
+ * 企業作成APIを呼び出すカスタムHook
+ */
+export function useCreateCompany() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const createCompany = async (companyName: string, forceCreate = false) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const fn = httpsCallable<CreateCompanyRequest, CreateCompanyResponse>(
+        functions,
+        'createCompany'
+      );
+      
+      const result = await fn({ companyName, forceCreate });
+      return result.data;
+    } catch (err: any) {
+      const errorMessage = err.message || '企業登録に失敗しました';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return { createCompany, loading, error };
+}
+```
+
+---
+
+### 3.4 Context パターン
+
+```typescript
+// src/contexts/AuthContext.tsx
+
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  signOut,
+  GoogleAuthProvider,
+  User 
+} from 'firebase/auth';
+import { auth } from '@/services/firebase';
+
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+    
+    return unsubscribe;
+  }, []);
+  
+  const login = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+  
+  const logout = async () => {
+    await signOut(auth);
+  };
+  
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+```
+
+---
+
+## 4. 状態管理
+
+### 4.1 状態管理戦略
+
+| 状態の種類 | 管理方法 | 例 |
+|----------|---------|---|
+| ローカルUI状態 | useState | モーダル開閉、フォーム入力 |
+| グローバルUI状態 | Context API | 通知トースト、ローディング |
+| サーバー状態 | カスタムHooks | Firestoreデータ |
+| URLパラメータ | React Router | ページID、フィルタ条件 |
+
+---
+
+### 4.2 状態の置き場所
+
+```typescript
+// ✅ 良い例：状態は必要最小限のスコープに配置
+
+// ローカル状態（コンポーネント内のみ使用）
+function CompanyForm() {
+  const [companyName, setCompanyName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // ...
+}
+
+// グローバル状態（複数コンポーネントで使用）
+// → Context APIで管理
+function NotificationProvider() {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  // ...
+}
+
+// サーバー状態（Firestoreから取得）
+// → カスタムHooksで管理
+function useCompanies() {
+  const [companies, setCompanies] = useState<Company[]>([]);
+  // Firestoreから取得
+}
+```
+
+---
+
+## 5. スタイリング規約
+
+### 5.1 Tailwind CSS使用ルール
+
+#### ✅ 基本ルール
+
+1. **カスタムCSSは原則として書かない**
+2. **Tailwind のユーティリティクラスのみ使用**
+3. **条件付きスタイルは`clsx`または`classnames`を使用**
+4. **繰り返しスタイルはコンポーネント化**
+
+---
+
+### 5.2 スタイリング例
+
+#### ボタンコンポーネント
+
+```typescript
+// src/components/common/Button.tsx
+
+import { ButtonHTMLAttributes, ReactNode } from 'react';
+import clsx from 'clsx';
+
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  children: ReactNode;
+  variant?: 'primary' | 'secondary' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  loading?: boolean;
+}
+
+export default function Button({
+  children,
+  variant = 'primary',
+  size = 'md',
+  loading = false,
+  disabled,
+  className,
+  ...props
+}: ButtonProps) {
+  return (
+    <button
+      className={clsx(
+        // 基本スタイル
+        'rounded-md font-medium transition-colors',
+        'focus:outline-none focus:ring-2 focus:ring-offset-2',
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+        
+        // variant によるスタイル
+        {
+          'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500': 
+            variant === 'primary',
+          'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500': 
+            variant === 'secondary',
+          'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500': 
+            variant === 'danger',
+        },
+        
+        // size によるスタイル
+        {
+          'px-3 py-1.5 text-sm': size === 'sm',
+          'px-4 py-2 text-base': size === 'md',
+          'px-6 py-3 text-lg': size === 'lg',
+        },
+        
+        // 追加クラス
+        className
+      )}
+      disabled={disabled || loading}
+      {...props}
+    >
+      {loading ? (
+        <span className="flex items-center">
+          <svg className="animate-spin -ml-1 mr-2 h-4 w-4" viewBox="0 0 24 24">
+            {/* スピナーSVG */}
+          </svg>
+          処理中...
+        </span>
+      ) : (
+        children
+      )}
+    </button>
+  );
+}
+```
+
+#### 使用例
+
+```typescript
+// ✅ 良い例
+<Button variant="primary" size="md">
+  登録
+</Button>
+
+<Button variant="secondary" onClick={handleCancel}>
+  キャンセル
+</Button>
+
+<Button variant="danger" loading={isDeleting}>
+  削除
+</Button>
+```
+
+---
+
+### 5.3 レスポンシブデザイン
+
+```typescript
+// Tailwindのブレークポイントを使用
+<div className="
+  grid 
+  grid-cols-1       /* モバイル: 1列 */
+  md:grid-cols-2    /* タブレット: 2列 */
+  lg:grid-cols-3    /* デスクトップ: 3列 */
+  gap-4
+">
+  {companies.map(company => (
+    <CompanyCard key={company.id} company={company} />
+  ))}
+</div>
+
+// テキストサイズもレスポンシブに
+<h1 className="
+  text-2xl     /* モバイル: 24px */
+  md:text-3xl  /* タブレット: 30px */
+  lg:text-4xl  /* デスクトップ: 36px */
+  font-bold
+">
+  {title}
+</h1>
+```
+
+---
+
+### 5.4 禁止事項
+
+```typescript
+// ❌ 悪い例：カスタムCSSを書く
+const styles = {
+  button: {
+    backgroundColor: '#3b82f6',
+    padding: '8px 16px',
+    borderRadius: '6px'
+  }
+};
+
+<button style={styles.button}>クリック</button>
+
+// ❌ 悪い例：CSSファイルを作成
+// Button.css
+.custom-button {
+  background-color: #3b82f6;
+  padding: 8px 16px;
+  border-radius: 6px;
+}
+
+// ✅ 良い例：Tailwindのみ使用
+<button className="bg-blue-600 px-4 py-2 rounded-md">
+  クリック
+</button>
+```
+
+---
+
+## 6. 命名規則
+
+### 6.1 ファイル・ディレクトリ命名
+
+| 種類 | 命名規則 | 例 |
+|-----|---------|---|
+| Reactコンポーネント | PascalCase | `CompanyCard.tsx` |
+| Hooks | camelCase (use〜) | `useCompanies.ts` |
+| Utils | camelCase | `normalizeCompanyName.ts` |
+| Types | camelCase | `company.ts` |
+| Constants | camelCase | `eventTypes.ts` |
+| ディレクトリ | kebab-case or camelCase | `companies/` |
+
+---
+
+### 6.2 変数・関数命名
+
+#### 変数
+
+```typescript
+// ✅ 良い例：意味のある名前
+const companyName = '株式会社コドモン';
+const isLoading = false;
+const hasError = true;
+const userList = [];
+
+// ❌ 悪い例：省略しすぎ
+const cn = '株式会社コドモン';
+const flg = false;
+const list = [];
+```
+
+#### ブール値
+
+```typescript
+// ✅ 良い例：is/has/can で始める
+const isLoading = true;
+const hasError = false;
+const canEdit = true;
+const shouldUpdate = false;
+
+// ❌ 悪い例
+const loading = true;  // isLoading の方が明確
+const error = false;   // hasError の方が明確
+```
+
+#### 関数
+
+```typescript
+// ✅ 良い例：動詞で始める
+function fetchCompanies() { }
+function createEvent() { }
+function updateProfile() { }
+function deleteCompany() { }
+
+// イベントハンドラー
+function handleClick() { }
+function handleSubmit() { }
+function handleInputChange() { }
+
+// ✅ 良い例：ブール値を返す関数
+function isValidEmail(email: string): boolean { }
+function hasPermission(user: User): boolean { }
+function canDelete(item: Item): boolean { }
+```
+
+#### 定数
+
+```typescript
+// ✅ 良い例：UPPER_SNAKE_CASE
+const MAX_RETRY_COUNT = 3;
+const API_BASE_URL = 'https://api.example.com';
+const DEFAULT_PAGE_SIZE = 20;
+
+// ✅ 良い例：オブジェクトの定数
+const EVENT_TYPES = {
+  FIRST_INTERVIEW: '一次面接',
+  SECOND_INTERVIEW: '二次面接',
+  FINAL_INTERVIEW: '最終面接',
+} as const;
+```
+
+---
+
+### 6.3 型命名
+
+```typescript
+// ✅ 良い例：明確な型名
+interface Company {
+  id: string;
+  companyName: string;
+}
+
+type EventType = '一次面接' | '二次面接' | '最終面接';
+
+interface CreateCompanyRequest {
+  companyName: string;
+}
+
+interface CreateCompanyResponse {
+  success: boolean;
+  companyId?: string;
+}
+
+// Props型は ComponentNameProps
+interface CompanyCardProps {
+  company: Company;
+  onDetail: (id: string) => void;
+}
+```
+
+---
+
+## 7. テスト戦略
+
+### 7.1 テストの種類
+
+| テストレベル | ツール | 対象 | 実装優先度 |
+|------------|-------|------|-----------|
+| ユニットテスト | Jest | Utils, Hooks | v2.0 |
+| コンポーネントテスト | React Testing Library | Components | v2.0 |
+| 統合テスト | Jest + Emulator | Functions | v2.0 |
+| E2Eテスト | Playwright | 全体フロー | v2.5 |
+
+---
+
+### 7.2 テスト例（将来実装）
+
+#### ユーティリティ関数のテスト
+
+```typescript
+// src/utils/__tests__/normalizeCompanyName.test.ts
+
+import { normalizeCompanyName } from '../normalizeCompanyName';
+
+describe('normalizeCompanyName', () => {
+  it('株式会社を除去する', () => {
+    expect(normalizeCompanyName('株式会社コドモン')).toBe('こどもん');
+  });
+  
+  it('大文字を小文字に変換する', () => {
+    expect(normalizeCompanyName('CODMON')).toBe('codmon');
+  });
+  
+  it('スペースを除去する', () => {
+    expect(normalizeCompanyName('コ ド モ ン')).toBe('こどもん');
+  });
+  
+  it('記号を除去する', () => {
+    expect(normalizeCompanyName('コドモン。')).toBe('こどもん');
+  });
+});
+```
+
+#### コンポーネントのテスト
+
+```typescript
+// src/components/companies/__tests__/CompanyCard.test.tsx
+
+import { render, screen, fireEvent } from '@testing-library/react';
+import CompanyCard from '../CompanyCard';
+
+const mockCompany = {
+  id: 'company_123',
+  companyName: '株式会社コドモン',
+  // ... 他のプロパティ
+};
+
+describe('CompanyCard', () => {
+  it('企業名が表示される', () => {
+    render(<CompanyCard company={mockCompany} onDetail={() => {}} />);
+    expect(screen.getByText('株式会社コドモン')).toBeInTheDocument();
+  });
+  
+  it('詳細ボタンをクリックするとonDetailが呼ばれる', () => {
+    const onDetail = jest.fn();
+    render(<CompanyCard company={mockCompany} onDetail={onDetail} />);
+    
+    fireEvent.click(screen.getByText('詳細'));
+    expect(onDetail).toHaveBeenCalledWith('company_123');
+  });
+});
+```
+
+---
+
+## 8. パフォーマンス最適化
+
+### 8.1 React最適化
+
+#### React.memo
+
+```typescript
+// ✅ 良い例：頻繁に再レンダリングされるコンポーネント
+import { memo } from 'react';
+
+const CompanyCard = memo(function CompanyCard({ company, onDetail }: Props) {
+  return (
+    <div onClick={() => onDetail(company.id)}>
+      {company.companyName}
+    </div>
+  );
+});
+
+export default CompanyCard;
+```
+
+#### useMemo / useCallback
+
+```typescript
+function CompanyList({ companies }: Props) {
+  // ✅ 良い例：計算コストが高い処理をメモ化
+  const sortedCompanies = useMemo(() => {
+    return [...companies].sort((a, b) => 
+      b.createdAt.localeCompare(a.createdAt)
+    );
+  }, [companies]);
+  
+  // ✅ 良い例：子コンポーネントに渡す関数をメモ化
+  const handleDetail = useCallback((id: string) => {
+    navigate(`/companies/${id}`);
+  }, [navigate]);
+  
+  return (
+    <div>
+      {sortedCompanies.map(company => (
+        <CompanyCard 
+          key={company.id} 
+          company={company} 
+          onDetail={handleDetail} 
+        />
+      ))}
+    </div>
+  );
+}
+```
+
+---
+
+### 8.2 バンドルサイズ最適化
+
+#### Dynamic Import
+
+```typescript
+// ✅ 良い例：大きなライブラリを遅延ロード
+import { lazy, Suspense } from 'react';
+
+const TrendsPage = lazy(() => import('./pages/TrendsPage'));
+
+function App() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <Routes>
+        <Route path="/trends" element={<TrendsPage />} />
+      </Routes>
+    </Suspense>
+  );
+}
+```
+
+#### Tree Shaking
+
+```typescript
+// ✅ 良い例：必要な関数のみインポート
+import { collection, query, getDocs } from 'firebase/firestore';
+
+// ❌ 悪い例：全てをインポート
+import * as firestore from 'firebase/firestore';
+```
+
+---
+
+### 8.3 Firestore最適化
+
+#### 複合インデックス
+
+```javascript
+// firestore.indexes.json
+{
+  "indexes": [
+    {
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "companyId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    }
+  ]
+}
+```
+
+#### ページネーション
+
+```typescript
+// ✅ 良い例：limit()を使用
+const q = query(
+  collection(db, 'users', userId, 'companies'),
+  orderBy('createdAt', 'desc'),
+  limit(20)  // 最初の20件のみ取得
+);
+
+const snapshot = await getDocs(q);
+```
+
+---
+
+## 9. セキュリティベストプラクティス
+
+### 9.1 環境変数管理
+
+```typescript
+// ✅ 良い例：環境変数の使用
+const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+
+// ❌ 悪い例：ハードコード
+const apiKey = 'AIzaSyC1234567890abcdefg';
+```
+
+---
+
+### 9.2 XSS対策
+
+```typescript
+// ✅ 良い例：Reactが自動的にエスケープ
+<div>{userInput}</div>
+
+// ❌ 悪い例：dangerouslySetInnerHTMLは避ける
+<div dangerouslySetInnerHTML={{ __html: userInput }} />
+```
+
+---
+
+### 9.3 認証チェック
+
+```typescript
+// ✅ 良い例：ProtectedRoute
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <Loading />;
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+// 使用例
+<Route path="/dashboard" element={
+  <ProtectedRoute>
+    <DashboardPage />
+  </ProtectedRoute>
+} />
+```
+
+---
+
+## 10. Git運用
+
+### 10.1 ブランチ戦略
+
+```
+main (本番)
+  └─ develop (開発)
+       ├─ feature/company-list (機能開発)
+       ├─ feature/event-form (機能開発)
+       └─ bugfix/calendar-sync (バグ修正)
+```
+
+---
+
+### 10.2 コミットメッセージ
+
+```bash
+# ✅ 良い例：Conventional Commits形式
+feat: 企業一覧画面を実装
+fix: カレンダー同期のバグを修正
+docs: READMEにセットアップ手順を追加
+refactor: 企業名正規化ロジックをリファクタリング
+test: useCompaniesのテストを追加
+chore: Tailwind CSSの設定を更新
+
+# ❌ 悪い例
+修正
+update
+変更しました
+```
+
+**フォーマット:**
+```
+<type>: <subject>
+
+<body>（オプション）
+
+<footer>（オプション）
+```
+
+**type一覧:**
+- `feat`: 新機能
+- `fix`: バグ修正
+- `docs`: ドキュメント
+- `style`: コードスタイル（機能に影響なし）
+- `refactor`: リファクタリング
+- `test`: テスト追加・修正
+- `chore`: ビルド、設定変更
+
+---
+
+## 11. コードレビューチェックリスト
+
+### 11.1 レビューポイント
+
+#### 機能性
+- [ ] 要件通りに動作するか
+- [ ] エッジケースを考慮しているか
+- [ ] エラーハンドリングが適切か
+
+#### コード品質
+- [ ] 命名規則に従っているか
+- [ ] DRY原則に従っているか
+- [ ] 適切にコンポーネント分割されているか
+- [ ] 型定義が適切か
+
+#### パフォーマンス
+- [ ] 不要な再レンダリングがないか
+- [ ] メモ化が必要な箇所で使われているか
+- [ ] Firestoreクエリが最適化されているか
+
+#### スタイル
+- [ ] Tailwind CSSのみ使用しているか
+- [ ] カスタムCSSを書いていないか
+- [ ] レスポンシブ対応しているか
+
+#### セキュリティ
+- [ ] ユーザー入力を適切にバリデーションしているか
+- [ ] 認証チェックが適切か
+- [ ] 環境変数を使用しているか
+
+---
+
+## 12. 開発環境セットアップ
+
+### 12.1 必要なツール
+
+```bash
+# Node.js (v18以上)
+node --version
+
+# Firebase CLI
+npm install -g firebase-tools
+firebase --version
+
+# エディタ: VSCode推奨
+```
+
+---
+
+### 12.2 VSCode拡張機能（推奨）
+
+```json
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",           // ESLint
+    "esbenp.prettier-vscode",           // Prettier
+    "bradlc.vscode-tailwindcss",        // Tailwind CSS IntelliSense
+    "firebase.vscode-firebase-explorer", // Firebase Explorer
+    "ms-vscode.vscode-typescript-next"  // TypeScript
+  ]
+}
+```
+
+---
+
+### 12.3 VSCode設定
+
+```json
+// .vscode/settings.json
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "tailwindCSS.experimental.classRegex": [
+    ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+  ]
+}
+```
+
+---
+
+## 13. よくある問題と解決策
+
+### 13.1 Firestore Emulator接続エラー
+
+**問題:**
+```
+FirebaseError: Could not reach Cloud Firestore backend
+```
+
+**解決策:**
+```typescript
+// firebase.ts で Emulator接続を確認
+if (process.env.NODE_ENV === 'development') {
+  connectFirestoreEmulator(db, 'localhost', 8080);
+  connectAuthEmulator(auth, 'http://localhost:9099');
+  connectFunctionsEmulator(functions, 'localhost', 5001);
+}
+```
+
+---
+
+### 13.2 Tailwind クラスが効かない
+
+**問題:**
+カスタムクラスが反映されない
+
+**解決策:**
+```javascript
+// tailwind.config.js で content を正しく設定
+module.exports = {
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+```
+
+---
+
+### 13.3 型エラー
+
+**問題:**
+```
+Property 'xxx' does not exist on type 'unknown'
+```
+
+**解決策:**
+```typescript
+// 型ガードを使用
+if (isCompanyData(data)) {
+  console.log(data.companyName); // 型安全
+}
+```
+
+---
+
+## 14. まとめ
+
+この実装ガイドは、Job Mete v1.5の開発における全ての規約・パターン・ベストプラクティスを網羅しています。
+
+### 重要な原則
+
+1. **統一感**: 全てのコードで同じパターンを使用
+2. **Tailwind Only**: カスタムCSSは書かない
+3. **型安全性**: TypeScriptを最大限活用
+4. **コンポーネント分離**: 適切な粒度で分割
+5. **パフォーマンス**: 必要な箇所でメモ化
+
+このガイドに従うことで、保守性が高く、拡張しやすいコードベースを維持できます。

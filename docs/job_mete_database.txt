@@ -1,0 +1,812 @@
+# 🗄️ Job Mete データベース設計書 v1.5
+
+---
+
+## 1. データベース概要
+
+### 1.1 データベース選定理由
+
+**採用:** Firebase Firestore (NoSQL ドキュメント指向データベース)
+
+**選定理由:**
+- ✅ リアルタイム同期機能（onSnapshot）
+- ✅ スケーラビリティ（サーバーレス）
+- ✅ Firebase Authentication / Functionsとのシームレスな統合
+- ✅ 柔軟なスキーマ（JSON形式）
+- ✅ 複雑なJOIN不要（非正規化で対応）
+
+**制約事項:**
+- ❌ 複雑なクエリは困難（集計など）
+- ❌ トランザクションは限定的
+- ❌ フルテキスト検索は標準機能なし
+
+---
+
+## 2. データモデル全体像
+
+### 2.1 コレクション構造図
+
+```
+Firestore Root
+│
+└── users (collection)
+    └── {userId} (document)
+        ├── profile (document)                 # ユーザープロフィール
+        │
+        ├── companies (subcollection)          # 企業マスターデータ
+        │   └── {companyId} (document)
+        │
+        ├── events (subcollection)             # 予定データ
+        │   └── {eventId} (document)
+        │
+        ├── trends (subcollection)             # 傾向分析結果
+        │   └── {trendId} (document)
+        │       └── latest (固定ID)
+        │
+        ├── usage (subcollection)              # API使用量管理
+        │   └── {usageId} (document)
+        │       └── today (固定ID)
+        │
+        └── tokens (subcollection)             # OAuth トークン（将来）
+            └── calendar (document)
+```
+
+### 2.2 ER図（概念モデル）
+
+```
+┌──────────────┐
+│    Users     │
+└──────────────┘
+       │
+       │ 1:N
+       ├───────────────────────────────┐
+       │                               │
+       ▼                               ▼
+┌──────────────┐                ┌──────────────┐
+│  Companies   │                │    Events    │
+│              │◄───────────────│              │
+│  (企業データ) │      N:1       │  (予定データ) │
+└──────────────┘   companyId    └──────────────┘
+       │                               
+       │ 1:N                           
+       ▼                               
+┌──────────────┐                
+│   Trends     │                
+│ (傾向分析)    │                
+└──────────────┘                
+
+関係性:
+- User : Companies = 1 : N
+- User : Events = 1 : N
+- Companies : Events = 1 : N
+- User : Trends = 1 : 1 (latest)
+```
+
+---
+
+## 3. コレクション詳細設計
+
+### 3.1 users/{userId}/profile
+
+**用途:** ユーザーの基本情報を保存
+
+#### スキーマ定義
+
+| フィールド名 | 型 | 必須 | 説明 | 例 |
+|------------|---|------|------|---|
+| uid | string | ✅ | Firebase Auth UID | "abc123xyz..." |
+| email | string | ✅ | メールアドレス | "user@example.com" |
+| displayName | string | ✅ | 表示名 | "山田太郎" |
+| photoURL | string |  | プロフィール画像URL | "https://..." |
+| createdAt | timestamp | ✅ | アカウント作成日時 | "2025-10-07T10:00:00Z" |
+| lastLoginAt | timestamp | ✅ | 最終ログイン日時 | "2025-10-12T14:30:00Z" |
+
+#### サンプルデータ
+
+```json
+{
+  "uid": "abc123xyz789",
+  "email": "yamada@example.com",
+  "displayName": "山田太郎",
+  "photoURL": "https://lh3.googleusercontent.com/...",
+  "createdAt": "2025-10-07T10:00:00Z",
+  "lastLoginAt": "2025-10-12T14:30:00Z"
+}
+```
+
+---
+
+### 3.2 users/{userId}/companies/{companyId}
+
+**用途:** 企業マスターデータ（分析結果、メモ、統計を含む）
+
+#### スキーマ定義
+
+| フィールド名 | 型 | 必須 | 説明 | インデックス |
+|------------|---|------|------|------------|
+| companyName | string | ✅ | 企業名（表示用） | - |
+| normalizedName | string | ✅ | 正規化された企業名 | ✅ ASC |
+| companyNameVariations | array |  | 検出された表記ゆれ | - |
+| analysis | map | ✅ | 企業分析結果 | - |
+| analysisMetadata | map | ✅ | 分析メタ情報 | - |
+| userNotes | string |  | ユーザーメモ | - |
+| stats | map | ✅ | 統計情報 | - |
+| createdAt | timestamp | ✅ | 作成日時 | ✅ DESC |
+| updatedAt | timestamp | ✅ | 更新日時 | - |
+
+#### サブフィールド詳細
+
+**analysis（企業分析結果）**
+```typescript
+{
+  businessOverview: string;        // 事業内容（100文字）
+  strengths: string[];             // 強み（3項目）
+  recentNews: string;              // 最近の動向（150文字）
+  industryPosition: string;        // 業界ポジション（100文字）
+  recruitmentInsights: string;     // 採用情報（80文字）
+}
+```
+
+**analysisMetadata（分析メタ情報）**
+```typescript
+{
+  status: 'completed' | 'pending' | 'failed';
+  modelUsed: string;               // 例: "gemini-2.0-flash-exp"
+  tokensUsed: number;              // API使用トークン数
+  searchSources: string[];         // 参照元URL
+  analyzedAt: string;              // ISO 8601形式
+  version: string;                 // スキーマバージョン
+  needsUpdate: boolean;            // 再分析推奨フラグ
+  lastUpdateCheck: string;         // 最終チェック日時
+}
+```
+
+**stats（統計情報）**
+```typescript
+{
+  eventCount: number;              // 関連予定数
+  firstRegistered: string;         // 初回登録日時
+  lastEventDate: string | null;    // 最新予定日時
+}
+```
+
+#### サンプルデータ
+
+```json
+{
+  "companyName": "株式会社コドモン",
+  "normalizedName": "こどもん",
+  "companyNameVariations": [
+    "株式会社コドモン",
+    "コドモン",
+    "CODMON"
+  ],
+  "analysis": {
+    "businessOverview": "保育園・幼稚園向けICTシステムを開発・提供するSaaS企業。保育現場のDXを推進。",
+    "strengths": [
+      "保育業界シェアNo.1のICTプラットフォーム",
+      "14,000以上の保育施設で利用される信頼性",
+      "保育DX分野のパイオニアとしての実績"
+    ],
+    "recentNews": "2024年9月、保育士向けAI相談機能をリリース。自治体との連携を強化し、デジタル化支援事業を拡大中。",
+    "industryPosition": "保育テック業界のリーディングカンパニー。競合にはユニファ、キッズリーなど。",
+    "recruitmentInsights": "エンジニア・プロダクトマネージャーを積極採用。社会貢献性の高い事業に興味がある学生向け。"
+  },
+  "analysisMetadata": {
+    "status": "completed",
+    "modelUsed": "gemini-2.0-flash-exp",
+    "tokensUsed": 1234,
+    "searchSources": [
+      "https://company.codmon.co.jp/news/...",
+      "https://prtimes.jp/..."
+    ],
+    "analyzedAt": "2025-10-12T15:30:00Z",
+    "version": "1.0",
+    "needsUpdate": false,
+    "lastUpdateCheck": "2025-10-12T15:30:00Z"
+  },
+  "userNotes": "保育×テックで社会貢献できる点に魅力。SaaS事業のスケール感も学びたい。",
+  "stats": {
+    "eventCount": 3,
+    "firstRegistered": "2025-10-07T10:00:00Z",
+    "lastEventDate": "2025-10-20T14:00:00Z"
+  },
+  "createdAt": "2025-10-07T10:00:00Z",
+  "updatedAt": "2025-10-12T15:30:00Z"
+}
+```
+
+#### インデックス設計
+
+```javascript
+// 自動作成されるインデックス
+companies.normalizedName (ASC)
+companies.createdAt (DESC)
+
+// 手動作成が必要な複合インデックス
+companies.stats.eventCount (DESC) + companies.createdAt (DESC)
+```
+
+---
+
+### 3.3 users/{userId}/events/{eventId}
+
+**用途:** 面接・説明会などの予定データ
+
+#### スキーマ定義
+
+| フィールド名 | 型 | 必須 | 説明 | インデックス |
+|------------|---|------|------|------------|
+| companyId | string | ✅ | 企業ID（参照） | ✅ ASC |
+| companyName | string | ✅ | 企業名（非正規化） | - |
+| eventType | string | ✅ | イベント種別 | - |
+| date | timestamp | ✅ | 開始日時 | ✅ ASC |
+| endDate | timestamp | ✅ | 終了日時 | - |
+| location | string |  | 場所 | - |
+| memo | string |  | メモ | - |
+| googleCalendar | map |  | Calendar連携情報 | - |
+| status | string | ✅ | ステータス | ✅ ASC |
+| result | string |  | 結果 | - |
+| resultMemo | string |  | 結果メモ | - |
+| createdAt | timestamp | ✅ | 作成日時 | - |
+| updatedAt | timestamp | ✅ | 更新日時 | - |
+
+#### Enum定義
+
+**eventType（イベント種別）**
+- `一次面接`
+- `二次面接`
+- `最終面接`
+- `説明会`
+- `インターン`
+- `カジュアル面談`
+- `その他`
+
+**status（ステータス）**
+- `scheduled`: 予定
+- `completed`: 完了
+- `cancelled`: キャンセル
+
+**result（結果）**
+- `passed`: 通過
+- `failed`: 不合格
+- `waiting`: 結果待ち
+- `null`: 未記録
+
+#### サブフィールド詳細
+
+**googleCalendar（Calendar連携情報）**
+```typescript
+{
+  eventId: string | null;          // GoogleカレンダーのEventID
+  syncStatus: 'synced' | 'pending' | 'failed';
+  lastSyncAttempt: string | null;  // 最終同期試行日時
+}
+```
+
+#### サンプルデータ
+
+```json
+{
+  "companyId": "company_abc123",
+  "companyName": "株式会社コドモン",
+  "eventType": "一次面接",
+  "date": "2025-10-15T13:00:00+09:00",
+  "endDate": "2025-10-15T14:00:00+09:00",
+  "location": "オンライン（Zoom）",
+  "memo": "担当：佐藤様。TypeScript経験をアピール",
+  "googleCalendar": {
+    "eventId": "abc123xyz789",
+    "syncStatus": "synced",
+    "lastSyncAttempt": "2025-10-12T10:05:00Z"
+  },
+  "status": "scheduled",
+  "result": null,
+  "resultMemo": "",
+  "createdAt": "2025-10-07T10:00:00Z",
+  "updatedAt": "2025-10-12T14:20:00Z"
+}
+```
+
+#### インデックス設計
+
+```javascript
+// 単一フィールドインデックス
+events.companyId (ASC)
+events.date (ASC)
+events.status (ASC)
+
+// 複合インデックス
+events.companyId (ASC) + events.date (ASC)
+events.status (ASC) + events.date (ASC)
+events.date (ASC) + events.status (ASC)
+```
+
+---
+
+### 3.4 users/{userId}/trends/latest
+
+**用途:** 傾向分析結果（最新のみ保存）
+
+#### スキーマ定義
+
+| フィールド名 | 型 | 必須 | 説明 |
+|------------|---|------|------|
+| summary | map | ✅ | 分析サマリー |
+| sourceCompanies | array | ✅ | 分析対象企業 |
+| analyzedAt | timestamp | ✅ | 分析日時 |
+| companyCount | number | ✅ | 分析対象企業数 |
+| modelUsed | string | ✅ | 使用モデル |
+
+#### サブフィールド詳細
+
+**summary（分析サマリー）**
+```typescript
+{
+  overallTrend: string;            // 全体傾向（200文字）
+  topIndustries: Array<{           // 業界別集計
+    name: string;
+    count: number;
+    percentage: number;
+  }>;
+  commonKeywords: Array<{          // 共通キーワード
+    word: string;
+    count: number;
+  }>;
+  recommendedSkills: string[];     // 推奨スキル
+}
+```
+
+**sourceCompanies（分析対象企業）**
+```typescript
+Array<{
+  companyId: string;
+  companyName: string;
+}>
+```
+
+#### サンプルデータ
+
+```json
+{
+  "summary": {
+    "overallTrend": "SaaS・EdTech・HRTechなど、「社会課題×テクノロジー」領域の企業に強い関心。特にBtoB SaaSのプロダクト開発に興味。",
+    "topIndustries": [
+      {
+        "name": "SaaS/Enterprise Tech",
+        "count": 5,
+        "percentage": 50
+      },
+      {
+        "name": "EdTech/保育Tech",
+        "count": 3,
+        "percentage": 30
+      },
+      {
+        "name": "HRTech",
+        "count": 2,
+        "percentage": 20
+      }
+    ],
+    "commonKeywords": [
+      { "word": "SaaS", "count": 7 },
+      { "word": "社会貢献", "count": 5 },
+      { "word": "TypeScript", "count": 4 },
+      { "word": "プロダクト開発", "count": 4 },
+      { "word": "スタートアップ", "count": 3 }
+    ],
+    "recommendedSkills": [
+      "TypeScript/React等のモダンフロントエンド技術",
+      "BtoB SaaSのプロダクトマネジメント知識",
+      "社会課題への問題意識"
+    ]
+  },
+  "sourceCompanies": [
+    {
+      "companyId": "company_abc123",
+      "companyName": "株式会社コドモン"
+    },
+    {
+      "companyId": "company_def456",
+      "companyName": "株式会社SmartHR"
+    }
+  ],
+  "analyzedAt": "2025-10-12T16:00:00Z",
+  "companyCount": 8,
+  "modelUsed": "gemini-2.0-flash-exp"
+}
+```
+
+---
+
+### 3.5 users/{userId}/usage/today
+
+**用途:** API使用量管理（日次リセット）
+
+#### スキーマ定義
+
+| フィールド名 | 型 | 必須 | 説明 |
+|------------|---|------|------|
+| date | string | ✅ | 対象日（YYYY-MM-DD） |
+| counts | map | ✅ | 各種カウント |
+| resetAt | timestamp | ✅ | リセット予定日時 |
+
+#### サブフィールド詳細
+
+**counts（各種カウント）**
+```typescript
+{
+  companyAnalysis: number;         // 企業分析実行回数
+  trendAnalysis: number;           // 傾向分析実行回数
+  reAnalysis: number;              // 再分析実行回数
+}
+```
+
+#### サンプルデータ
+
+```json
+{
+  "date": "2025-10-12",
+  "counts": {
+    "companyAnalysis": 4,
+    "trendAnalysis": 2,
+    "reAnalysis": 1
+  },
+  "resetAt": "2025-10-13T00:00:00+09:00"
+}
+```
+
+---
+
+### 3.6 users/{userId}/tokens/calendar（将来実装）
+
+**用途:** OAuth 2.0トークン保管
+
+#### スキーマ定義
+
+| フィールド名 | 型 | 必須 | 説明 |
+|------------|---|------|------|
+| refreshToken | string | ✅ | リフレッシュトークン（暗号化） |
+| accessToken | string |  | アクセストークン（一時的） |
+| expiresAt | timestamp |  | アクセストークン有効期限 |
+| scope | string | ✅ | 許可スコープ |
+| createdAt | timestamp | ✅ | 作成日時 |
+| updatedAt | timestamp | ✅ | 更新日時 |
+
+#### セキュリティ考慮事項
+
+⚠️ **重要:** トークンは暗号化して保存すること
+- 本番環境では必ずSecret Managerを使用
+- Firestoreに平文で保存しない
+- アクセストークンは短時間で失効させる
+
+---
+
+## 4. データ整合性とトランザクション
+
+### 4.1 整合性制約
+
+| 制約 | 実装方法 |
+|-----|---------|
+| companyId参照整合性 | アプリケーション層で検証 |
+| normalizedName一意性 | クエリで重複チェック |
+| eventCount正確性 | Functionsでアトミックに更新 |
+| 日次カウンターリセット | 実行時に日付チェック |
+
+### 4.2 トランザクション設計
+
+**シナリオ1: 予定削除時の企業統計更新**
+
+```typescript
+const db = admin.firestore();
+
+await db.runTransaction(async (transaction) => {
+  // 1. 予定削除
+  transaction.delete(eventRef);
+  
+  // 2. 企業統計更新
+  const companyRef = db.doc(`users/${userId}/companies/${companyId}`);
+  const companyDoc = await transaction.get(companyRef);
+  
+  const newEventCount = companyDoc.data().stats.eventCount - 1;
+  
+  if (newEventCount === 0) {
+    // 予定が0件なら企業も削除
+    transaction.delete(companyRef);
+  } else {
+    transaction.update(companyRef, {
+      'stats.eventCount': newEventCount
+    });
+  }
+});
+```
+
+**シナリオ2: 企業削除時の関連予定一括削除**
+
+```typescript
+// Batch Write（最大500件）
+const batch = db.batch();
+
+// 企業削除
+batch.delete(companyRef);
+
+// 関連予定削除
+const events = await db
+  .collection(`users/${userId}/events`)
+  .where('companyId', '==', companyId)
+  .get();
+
+events.forEach(doc => {
+  batch.delete(doc.ref);
+});
+
+await batch.commit();
+```
+
+---
+
+## 5. クエリ設計
+
+### 5.1 主要クエリ一覧
+
+#### Q1: 企業一覧取得（登録日順）
+
+```typescript
+db.collection(`users/${userId}/companies`)
+  .orderBy('createdAt', 'desc')
+  .limit(50)
+  .get();
+```
+
+**使用インデックス:** `createdAt (DESC)`
+
+---
+
+#### Q2: 企業名重複チェック
+
+```typescript
+db.collection(`users/${userId}/companies`)
+  .where('normalizedName', '==', normalizedName)
+  .limit(1)
+  .get();
+```
+
+**使用インデックス:** `normalizedName (ASC)`
+
+---
+
+#### Q3: 予定一覧取得（日付順）
+
+```typescript
+db.collection(`users/${userId}/events`)
+  .where('status', '==', 'scheduled')
+  .orderBy('date', 'asc')
+  .get();
+```
+
+**使用インデックス:** `status (ASC) + date (ASC)`
+
+---
+
+#### Q4: 企業別予定取得
+
+```typescript
+db.collection(`users/${userId}/events`)
+  .where('companyId', '==', companyId)
+  .orderBy('date', 'asc')
+  .get();
+```
+
+**使用インデックス:** `companyId (ASC) + date (ASC)`
+
+---
+
+#### Q5: 分析完了済み企業取得（傾向分析用）
+
+```typescript
+db.collection(`users/${userId}/companies`)
+  .where('analysisMetadata.status', '==', 'completed')
+  .get();
+```
+
+**使用インデックス:** `analysisMetadata.status (ASC)`
+
+---
+
+### 5.2 パフォーマンス最適化
+
+| 最適化手法 | 実装箇所 | 効果 |
+|----------|---------|------|
+| 複合インデックス | 頻出クエリ | 100倍高速化 |
+| limit()使用 | 一覧取得 | 不要データ削減 |
+| 非正規化 | companyName | JOIN不要 |
+| ページネーション | 50件以上の一覧 | 初期ロード高速化 |
+
+---
+
+## 6. データライフサイクル管理
+
+### 6.1 データ保持期間
+
+| データ種別 | 保持期間 | 削除トリガー |
+|----------|---------|------------|
+| 企業データ | 予定が存在する限り | 全予定削除時 |
+| 予定データ | ユーザーが削除するまで | 手動削除 |
+| 傾向分析 | 最新1件のみ | 新規分析実行時 |
+| 使用量データ | 当日のみ | 日次自動リセット |
+| ユーザープロフィール | アカウント削除まで | アカウント削除時 |
+
+### 6.2 データ削除フロー
+
+```
+[ユーザーアカウント削除]
+       ↓
+┌─────────────────────┐
+│ 1. companies削除    │
+│ 2. events削除       │
+│ 3. trends削除       │
+│ 4. usage削除        │
+│ 5. tokens削除       │
+│ 6. profile削除      │
+└─────────────────────┘
+       ↓
+ [Firebase Auth削除]
+```
+
+---
+
+## 7. バックアップとリストア
+
+### 7.1 バックアップ戦略（本番環境）
+
+| 方法 | 頻度 | 保存期間 |
+|-----|------|---------|
+| 自動バックアップ | 日次 | 30日 |
+| 手動エクスポート | 週次 | 90日 |
+
+### 7.2 エクスポートコマンド
+
+```bash
+# 全データエクスポート
+gcloud firestore export gs://job-mete-backup/$(date +%Y%m%d)
+
+# 特定コレクションのみ
+gcloud firestore export gs://job-mete-backup/$(date +%Y%m%d) \
+  --collection-ids=users
+```
+
+---
+
+## 8. セキュリティルール
+
+### 8.1 Firestoreセキュリティルール全体
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ユーザープロフィール
+    match /users/{userId}/profile {
+      allow read, write: if request.auth != null 
+                         && request.auth.uid == userId;
+    }
+    
+    // 企業データ
+    match /users/{userId}/companies/{companyId} {
+      allow read, write: if request.auth != null 
+                         && request.auth.uid == userId;
+      
+      // 作成時バリデーション
+      allow create: if request.auth.uid == userId
+                    && request.resource.data.companyName is string
+                    && request.resource.data.normalizedName is string
+                    && request.resource.data.analysis is map;
+    }
+    
+    // 予定データ
+    match /users/{userId}/events/{eventId} {
+      allow read, write: if request.auth != null 
+                         && request.auth.uid == userId;
+      
+      // 作成時バリデーション
+      allow create: if request.auth.uid == userId
+                    && request.resource.data.companyId is string
+                    && request.resource.data.date is timestamp
+                    && request.resource.data.eventType is string;
+    }
+    
+    // 傾向分析
+    match /users/{userId}/trends/{trendId} {
+      allow read: if request.auth != null 
+                  && request.auth.uid == userId;
+      allow write: if false; // Functions経由のみ
+    }
+    
+    // 使用量データ
+    match /users/{userId}/usage/{usageId} {
+      allow read: if request.auth != null 
+                  && request.auth.uid == userId;
+      allow write: if false; // Functions経由のみ
+    }
+    
+    // デフォルト拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+
+---
+
+## 9. データマイグレーション計画
+
+### 9.1 スキーマバージョン管理
+
+各ドキュメントに`version`フィールドを保持:
+
+```typescript
+{
+  version: "1.0",  // 現在のスキーマバージョン
+  // ... その他のデータ
+}
+```
+
+### 9.2 マイグレーションスクリプト例
+
+```typescript
+// v1.0 → v1.1 へのマイグレーション
+async function migrateToV1_1() {
+  const companies = await db
+    .collectionGroup('companies')
+    .where('version', '==', '1.0')
+    .get();
+
+  const batch = db.batch();
+  
+  companies.forEach(doc => {
+    batch.update(doc.ref, {
+      version: '1.1',
+      // 新フィールド追加
+      'analysisMetadata.lastUpdateCheck': doc.data().analysisMetadata.analyzedAt
+    });
+  });
+
+  await batch.commit();
+}
+```
+
+---
+
+## 10. モニタリングとメトリクス
+
+### 10.1 監視対象
+
+| メトリクス | 閾値 | アラート |
+|----------|------|---------|
+| 読み取り回数 | > 50,000/日 | Email |
+| 書き込み回数 | > 20,000/日 | Email |
+| ドキュメント数 | > 100,000 | Email |
+| クエリ遅延 | > 1秒 | Slack |
+
+### 10.2 Firebase Console確認項目
+
+- Usage タブ: 読み書き回数
+- Indexes タブ: インデックス作成状況
+- Rules タブ: セキュリティルール適用状況
+
+---
+
+## 11. まとめ
+
+本データベース設計書は、Job Mete v1.5のFirestoreデータモデル全体を網羅しています。
+
+**重要な設計判断:**
+1. **企業データ中心設計:** 予定が企業を参照する構造
+2. **非正規化:** companyNameを予定に保持してJOIN不要化
+3. **正規化キー:** normalizedNameで表記ゆれを吸収
+4. **サブコレクション:** ユーザーごとのデータ分離
+5. **トランザクション:** 整合性が必要な箇所のみ使用
+
+このデータベース設計は、プロトタイプから本番環

@@ -197,74 +197,131 @@ firebase init
 
 ### 🔐 4. 環境変数の設定
 
-#### 4-1. `.env.local` ファイルの作成
+#### 4-1. クライアント側の環境変数設定
+
+プロジェクトには環境変数のテンプレートファイルが用意されています。
 
 ```bash
-# ルートディレクトリに作成
-touch .env.local
+# client/ ディレクトリに移動
+cd client
+
+# テンプレートファイルから .env.local を作成
+cp .env.local.template .env.local
 ```
 
 #### 4-2. Firebase設定の取得
 
-Firebase Console → プロジェクト設定 → 全般 → マイアプリ → SDK設定から取得
+Firebase Consoleから設定値を取得します：
 
-#### 4-3. `.env.local` に記入
+1. [Firebase Console](https://console.firebase.google.com/) を開く
+2. プロジェクト「job-mete」を選択
+3. 左側メニューから ⚙️ **プロジェクトの設定** をクリック
+4. **全般** タブで下にスクロール
+5. **マイアプリ** セクションで Web アプリの **SDK の設定と構成** を確認
+6. 表示される設定値を `.env.local` にコピー
+
+#### 4-3. `.env.local` の編集
+
+取得した値を `.env.local` に記入します：
 
 ```bash
-# Firebase Config
+# Firebase Configuration
 VITE_FIREBASE_API_KEY=AIzaSy...
-VITE_FIREBASE_AUTH_DOMAIN=job-mete-dev.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=job-mete-dev
-VITE_FIREBASE_STORAGE_BUCKET=job-mete-dev.appspot.com
+VITE_FIREBASE_AUTH_DOMAIN=job-mete.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=job-mete
+VITE_FIREBASE_STORAGE_BUCKET=job-mete.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
 VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
-
-# Emulator設定（開発環境）
-VITE_USE_EMULATOR=true
 ```
 
-#### 4-4. Functions の環境変数
+#### 4-4. Functions側の環境変数設定
 
 ```bash
-cd functions
-touch .env
+# functions/ ディレクトリに移動
+cd ../functions
 
-# .env に記入
+# テンプレートファイルから .env を作成
+cp .env.template .env
+```
+
+#### 4-5. Gemini API キーの取得と設定
+
+1. **Gemini API キーの取得:**
+   - [Google AI Studio](https://aistudio.google.com/app/apikey) にアクセス
+   - **Create API Key** をクリック
+   - 生成されたキーをコピー
+
+2. **`functions/.env` に記入:**
+```bash
 GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+#### 4-6. Google Calendar API の設定（後で実装）
+
+Google Calendar連携は後のフェーズで実装します。以下は参考情報です：
+
+1. [Google Cloud Console](https://console.cloud.google.com/) を開く
+2. **APIs & Services** → **Credentials** を選択
+3. **OAuth 2.0 Client ID** を作成
+4. 必要なスコープ: `https://www.googleapis.com/auth/calendar.events`
+
+```bash
+# functions/.env に追加（Calendar連携実装時）
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 ```
 
-**Gemini APIキーの取得:**  
-https://aistudio.google.com/app/apikey
+#### 環境変数ファイルの確認
 
-**Google Calendar API設定:**  
-https://console.cloud.google.com/ → APIs & Services → Credentials
+以下のファイルが作成されていることを確認してください：
+
+```
+job-mete/
+├── client/
+│   ├── .env.local.template    # ✅ Gitにコミット済み
+│   └── .env.local              # ✅ 作成完了（.gitignoreで除外）
+└── functions/
+    ├── .env.template           # ✅ Gitにコミット済み
+    └── .env                    # ✅ 作成完了（.gitignoreで除外）
+```
+
+⚠️ **重要:** `.env.local` と `.env` ファイルは機密情報を含むため、Gitにコミットしないでください（`.gitignore`で除外されています）。
 
 ---
 
-### 🎨 5. Tailwind CSS の設定
+### 🎨 5. Tailwind CSS と React Router のインストール
+
+#### 5-1. npm キャッシュの修正（必要な場合のみ）
+
+npm インストールでエラーが発生する場合、以下のコマンドで修正してください：
 
 ```bash
-# すでに package.json に含まれている場合はスキップ
+# npm キャッシュディレクトリの権限を修正
+sudo chown -R $(whoami) "$(npm config get cache)"
+```
+
+#### 5-2. パッケージのインストール
+
+```bash
+# client/ ディレクトリに移動
+cd client
+
+# Tailwind CSS と React Router をインストール
 npm install -D tailwindcss postcss autoprefixer
-npx tailwindcss init -p
+npm install react-router-dom
 ```
 
-`tailwind.config.js` の確認:
+#### 5-3. 設定の確認
 
-```javascript
-/** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: [
-    "./src/**/*.{js,jsx,ts,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
-```
+以下のファイルがすでに設定されています：
+
+- `tailwind.config.js` - Tailwind CSS の設定
+- `postcss.config.js` - PostCSS の設定
+- `src/index.css` - Tailwind ディレクティブを含む
+- `src/App.tsx` - React Router のセットアップ済み
+- `vite.config.ts` - パスエイリアス（`@/`）の設定済み
+
+インストールが完了すれば、すぐに開発を開始できます。
 
 ---
 

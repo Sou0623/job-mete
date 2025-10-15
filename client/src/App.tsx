@@ -4,6 +4,9 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/common/ProtectedRoute';
 import LoginPage from '@/pages/LoginPage';
 import DashboardPage from '@/pages/DashboardPage';
+import CompaniesPage from '@/pages/CompaniesPage';
+import CompanyDetailPage from '@/pages/CompanyDetailPage';
+import CompanyFormPage from '@/pages/CompanyFormPage';
 
 export default function App() {
   return (
@@ -19,6 +22,36 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 企業一覧（認証必須） */}
+          <Route
+            path="/companies"
+            element={
+              <ProtectedRoute>
+                <CompaniesPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 企業登録（認証必須） */}
+          <Route
+            path="/companies/new"
+            element={
+              <ProtectedRoute>
+                <CompanyFormPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 企業詳細（認証必須） */}
+          <Route
+            path="/companies/:companyId"
+            element={
+              <ProtectedRoute>
+                <CompanyDetailPage />
               </ProtectedRoute>
             }
           />

@@ -1,12 +1,12 @@
 /**
- * 企業データの型定義
+ * Functions用の型定義
  */
 
 /**
  * 企業マスターデータ
  */
 export interface Company {
-  id: string;
+  id?: string;
   companyName: string;
   normalizedName: string;
   companyNameVariations?: string[];
@@ -14,8 +14,8 @@ export interface Company {
   analysisMetadata: AnalysisMetadata;
   userNotes?: string;
   stats: CompanyStats;
-  createdAt: string; // ISO 8601
-  updatedAt: string; // ISO 8601
+  createdAt: FirebaseFirestore.Timestamp | string;
+  updatedAt: FirebaseFirestore.Timestamp | string;
 }
 
 /**
@@ -33,14 +33,14 @@ export interface CompanyAnalysis {
  * 分析メタ情報
  */
 export interface AnalysisMetadata {
-  status: 'completed' | 'pending' | 'failed';
+  status: "completed" | "pending" | "failed";
   modelUsed: string;
   tokensUsed: number;
   searchSources: string[];
-  analyzedAt: string; // ISO 8601
+  analyzedAt: string;
   version: string;
   needsUpdate: boolean;
-  lastUpdateCheck: string; // ISO 8601
+  lastUpdateCheck: string;
   /** デバッグ用：Gemini APIに送信したプロンプト */
   prompt?: string;
   /** デバッグ用：Gemini APIからの生のレスポンス（JSON文字列） */
@@ -52,6 +52,23 @@ export interface AnalysisMetadata {
  */
 export interface CompanyStats {
   eventCount: number;
-  firstRegistered: string; // ISO 8601
-  lastEventDate: string | null; // ISO 8601
+  firstRegistered: string;
+  lastEventDate: string | null;
+}
+
+/**
+ * createCompany Function のリクエスト
+ */
+export interface CreateCompanyRequest {
+  companyName: string;
+}
+
+/**
+ * createCompany Function のレスポンス
+ */
+export interface CreateCompanyResponse {
+  success: boolean;
+  companyId?: string;
+  isDuplicate?: boolean;
+  error?: string;
 }

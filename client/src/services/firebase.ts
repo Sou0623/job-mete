@@ -44,18 +44,12 @@ if (import.meta.env.DEV) {
 
     // Authentication Emulator に接続
     connectAuthEmulator(auth, 'http://localhost:9099', {
-      disableWarnings: true, // 警告を非表示
+      disableWarnings: true,
     });
 
     // Functions Emulator に接続
     connectFunctionsEmulator(functions, 'localhost', 5001);
-
-    console.log('🔧 Firebase Emulator connected');
-    console.log('  - Firestore: localhost:8080');
-    console.log('  - Authentication: localhost:9099');
-    console.log('  - Functions: localhost:5001');
   } catch (error) {
     // 既に接続済みの場合はエラーが発生するが、無視する
-    console.warn('Firebase Emulator already connected or failed to connect:', error);
   }
 }

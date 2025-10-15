@@ -4,50 +4,14 @@
  */
 
 import { useAuth } from '@/contexts/AuthContext';
+import Header from '@/components/layout/Header';
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
-
-  /**
-   * ログアウト処理
-   */
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('ログアウトエラー:', error);
-    }
-  };
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* ヘッダー */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <h1 className="text-xl font-bold text-blue-600">Job Mete</h1>
-
-          <div className="flex items-center gap-4">
-            {user && (
-              <>
-                {user.photoURL && (
-                  <img
-                    src={user.photoURL}
-                    alt={user.displayName || 'ユーザー'}
-                    className="w-8 h-8 rounded-full"
-                  />
-                )}
-                <span className="text-sm font-medium">{user.displayName}</span>
-                <button
-                  onClick={handleLogout}
-                  className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md hover:bg-gray-100 transition-colors"
-                >
-                  ログアウト
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* メインコンテンツ */}
       <main className="max-w-7xl mx-auto px-4 py-8">

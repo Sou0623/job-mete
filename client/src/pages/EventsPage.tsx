@@ -10,12 +10,12 @@ import EventCard from '@/components/events/EventCard';
 import Header from '@/components/layout/Header';
 import Loading from '@/components/common/Loading';
 import ErrorMessage from '@/components/common/ErrorMessage';
-import type { EventStatus } from '@/types/event';
+import type { Status } from '@/types/event';
 
 export default function EventsPage() {
   const { events, loading, error } = useEvents();
   const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState<EventStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
 
   /**
    * ステータスでフィルタリング

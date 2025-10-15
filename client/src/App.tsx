@@ -8,6 +8,7 @@ import CompaniesPage from '@/pages/CompaniesPage';
 import CompanyDetailPage from '@/pages/CompanyDetailPage';
 import EventsPage from '@/pages/EventsPage';
 import EventFormPage from '@/pages/EventFormPage';
+import EventEditPage from '@/pages/EventEditPage';
 import EventDetailPage from '@/pages/EventDetailPage';
 import TrendsPage from '@/pages/TrendsPage';
 
@@ -65,6 +66,16 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <EventFormPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 予定編集（認証必須） */}
+          <Route
+            path="/events/:eventId/edit"
+            element={
+              <ProtectedRoute>
+                <EventEditPage />
               </ProtectedRoute>
             }
           />

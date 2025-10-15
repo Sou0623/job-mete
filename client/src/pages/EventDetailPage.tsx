@@ -321,6 +321,12 @@ export default function EventDetailPage() {
               企業情報を見る
             </button>
             <button
+              onClick={() => navigate(`/events/${eventId}/edit`)}
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors font-medium text-sm"
+            >
+              ✏️ 予定を編集
+            </button>
+            <button
               onClick={handleDeleteClick}
               className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors font-medium text-sm"
             >

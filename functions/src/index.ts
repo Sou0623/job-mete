@@ -13,6 +13,7 @@ setGlobalOptions({
 
 // 企業管理Functions
 export {createCompany} from "./handlers/companies/createCompany";
+export {reanalyzeCompany} from "./handlers/companies/reanalyzeCompany";
 
 // 予定管理Functions
 export {createEvent} from "./handlers/events/createEvent";

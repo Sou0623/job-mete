@@ -6,9 +6,11 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, updateDoc, deleteDoc, collection, query, getDocs } from 'firebase/firestore';
-import { db } from '@/services/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import type { ReanalyzeCompanyRequest, ReanalyzeCompanyResponse } from '@/types';
 
 export default function CompanyDetailPage() {
   const { companyId } = useParams<{ companyId: string }>();
@@ -21,6 +23,7 @@ export default function CompanyDetailPage() {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
 
   /**
    * ログアウト処理
@@ -80,7 +83,6 @@ export default function CompanyDetailPage() {
 
   /**
    * 再分析を実行
-   * TODO: 後でreanalyzeCompany Functionを呼び出す
    */
   const handleReanalyze = async () => {
     if (!user || !companyId) return;
@@ -91,7 +93,36 @@ export default function CompanyDetailPage() {
 
     if (!confirmed) return;
 
-    alert('再分析機能は後で実装されます（reanalyzeCompany Function）');
+    try {
+      setIsReanalyzing(true);
+
+      const reanalyzeCompanyFn = httpsCallable<
+        ReanalyzeCompanyRequest,
+        ReanalyzeCompanyResponse
+      >(functions, 'reanalyzeCompany');
+
+      const result = await reanalyzeCompanyFn({ companyId });
+
+      if (result.data.success) {
+        alert('✅ ' + result.data.message);
+        // ページをリロードして最新データを表示
+        window.location.reload();
+      } else {
+        alert('再分析に失敗しました');
+      }
+    } catch (err: any) {
+      console.error('再分析エラー:', err);
+
+      if (err.code === 'unauthenticated') {
+        alert('認証が必要です。ログインし直してください。');
+      } else if (err.code === 'not-found') {
+        alert('企業が見つかりません');
+      } else {
+        alert('再分析に失敗しました。もう一度お試しください。');
+      }
+    } finally {
+      setIsReanalyzing(false);
+    }
   };
 
   /**
@@ -292,14 +323,16 @@ export default function CompanyDetailPage() {
             {needsReanalysis() && (
               <button
                 onClick={handleReanalyze}
-                className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors font-medium text-sm"
+                disabled={isReanalyzing}
+                className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 disabled:bg-gray-400 transition-colors font-medium text-sm"
               >
-                🔄 再分析
+                {isReanalyzing ? '再分析中...' : '🔄 再分析'}
               </button>
             )}
             <button
               onClick={handleDeleteClick}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors font-medium text-sm"
+              disabled={isReanalyzing}
+              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:bg-gray-400 transition-colors font-medium text-sm"
             >
               🗑️ 企業を削除
             </button>

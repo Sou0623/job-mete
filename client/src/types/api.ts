@@ -65,3 +65,17 @@ export interface AnalyzeTrendsResponse {
   analyzedAt: string; // ISO 8601
   companyCount: number;
 }
+
+// ============================================================
+// reanalyzeCompany
+// ============================================================
+
+export interface ReanalyzeCompanyRequest {
+  companyId: string;
+}
+
+export interface ReanalyzeCompanyResponse {
+  success: boolean;
+  companyId: string;
+  message: string;
+}

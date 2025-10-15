@@ -7,6 +7,9 @@ import DashboardPage from '@/pages/DashboardPage';
 import CompaniesPage from '@/pages/CompaniesPage';
 import CompanyDetailPage from '@/pages/CompanyDetailPage';
 import CompanyFormPage from '@/pages/CompanyFormPage';
+import EventsPage from '@/pages/EventsPage';
+import EventFormPage from '@/pages/EventFormPage';
+import EventDetailPage from '@/pages/EventDetailPage';
 
 export default function App() {
   return (
@@ -52,6 +55,36 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <CompanyDetailPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 予定一覧（認証必須） */}
+          <Route
+            path="/events"
+            element={
+              <ProtectedRoute>
+                <EventsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 予定登録（認証必須） */}
+          <Route
+            path="/events/new"
+            element={
+              <ProtectedRoute>
+                <EventFormPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 予定詳細（認証必須） */}
+          <Route
+            path="/events/:eventId"
+            element={
+              <ProtectedRoute>
+                <EventDetailPage />
               </ProtectedRoute>
             }
           />

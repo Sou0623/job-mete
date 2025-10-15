@@ -8,8 +8,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
+import { FirebaseError } from 'firebase/app';
 import { db, functions } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import type { Company } from '@/types/company';
 
 export default function CompanyFormPage() {
   const { user, logout } = useAuth();
@@ -19,7 +21,7 @@ export default function CompanyFormPage() {
   const [isChecking, setIsChecking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [duplicateCompany, setDuplicateCompany] = useState<any>(null);
+  const [duplicateCompany, setDuplicateCompany] = useState<Company | null>(null);
 
   /**
    * ログアウト処理
@@ -40,7 +42,7 @@ export default function CompanyFormPage() {
       .toLowerCase()
       .replace(/株式会社|かぶしきがいしゃ|㈱/g, '')
       .replace(/\s+/g, '')
-      .replace(/[\.、。・]/g, '');
+      .replace(/[.、。・]/g, '');
   };
 
   /**
@@ -64,7 +66,7 @@ export default function CompanyFormPage() {
           const existing = {
             id: snapshot.docs[0].id,
             ...snapshot.docs[0].data(),
-          };
+          } as Company;
           setDuplicateCompany(existing);
         } else {
           setDuplicateCompany(null);
@@ -112,16 +114,21 @@ export default function CompanyFormPage() {
       } else {
         setError(result.data.error || '企業の登録に失敗しました');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('企業登録エラー:', err);
 
       // Firebase Functions のエラーメッセージを表示
-      if (err.code === 'unauthenticated') {
-        setError('認証が必要です。ログインし直してください。');
-      } else if (err.code === 'invalid-argument') {
-        setError(err.message || '企業名が不正です');
+      if (err instanceof FirebaseError) {
+        const firebaseErr = err as FirebaseError;
+        if (firebaseErr.code === 'unauthenticated') {
+          setError('認証が必要です。ログインし直してください。');
+        } else if (firebaseErr.code === 'invalid-argument') {
+          setError(firebaseErr.message || '企業名が不正です');
+        } else {
+          setError('企業分析中にエラーが発生しました。もう一度お試しください。');
+        }
       } else {
-        setError('企業分析中にエラーが発生しました。もう一度お試しください。');
+        setError('予期しないエラーが発生しました。もう一度お試しください。');
       }
     } finally {
       setIsSubmitting(false);

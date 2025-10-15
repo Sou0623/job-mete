@@ -3,10 +3,11 @@
  * 予定登録API（企業ID取得/作成、Firestore保存、企業統計更新）
  */
 
-import {onCall, HttpsError} from "firebase-functions/v2/https";
+import {onCall, HttpsError, CallableRequest} from "firebase-functions/v2/https";
 import {FieldValue} from "firebase-admin/firestore";
 import {db} from "../../config/firebase";
 import {normalizeCompanyName} from "../../utils/normalizer";
+import {analyzeCompanyWithGemini} from "../../services/geminiService";
 
 /**
  * イベント種別
@@ -58,7 +59,7 @@ interface CreateEventResponse {
  *
  * 処理フロー:
  * 1. 認証チェック
- * 2. 企業名から企業ID取得（なければエラー）
+ * 2. 企業名から企業ID取得（なければ自動的にcreateCompanyを呼び出して作成）
  * 3. 予定をFirestoreに保存
  * 4. 企業統計を更新（eventCount++, lastEventDate更新）
  * 5. eventIdを返す
@@ -95,7 +96,7 @@ export const createEvent = onCall<
       throw new HttpsError("invalid-argument", "日時は必須です");
     }
 
-    // 2. 企業名から企業ID取得
+    // 2. 企業名から企業ID取得（なければ自動作成）
     const normalizedName = normalizeCompanyName(companyName.trim());
     const companiesRef = db.collection("users").doc(userId).collection("companies");
     const companyQuery = await companiesRef
@@ -103,15 +104,68 @@ export const createEvent = onCall<
       .limit(1)
       .get();
 
-    if (companyQuery.empty) {
-      throw new HttpsError(
-        "not-found",
-        `企業「${companyName}」が見つかりません。先に企業を登録してください。`
-      );
-    }
+    let companyId: string;
+    let companyDoc;
 
-    const companyDoc = companyQuery.docs[0];
-    const companyId = companyDoc.id;
+    if (companyQuery.empty) {
+      // 企業が存在しない場合、自動的に作成
+      console.log(`[createEvent] 企業「${companyName}」が見つからないため、自動作成します`);
+
+      try {
+        // Gemini APIで企業分析
+        const {analysis, metadata} = await analyzeCompanyWithGemini(
+          companyName.trim()
+        );
+
+        console.log(`[createEvent] 企業分析が完了: ${companyName.trim()}`);
+
+        // Firestoreに保存
+        const now = new Date().toISOString();
+        const companyData = {
+          companyName: companyName.trim(),
+          normalizedName,
+          companyNameVariations: [],
+          analysis,
+          analysisMetadata: {
+            status: "completed" as const,
+            modelUsed: metadata.modelUsed,
+            tokensUsed: metadata.tokensUsed,
+            searchSources: metadata.searchSources,
+            analyzedAt: now,
+            version: "1.0",
+            needsUpdate: false,
+            lastUpdateCheck: now,
+            // デバッグ用：プロンプトとレスポンスも保存
+            prompt: metadata.prompt,
+            rawResponse: metadata.rawResponse,
+          },
+          userNotes: "",
+          stats: {
+            eventCount: 0,
+            firstRegistered: now,
+            lastEventDate: null,
+          },
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+
+        const newCompanyDoc = await companiesRef.add(companyData);
+        companyId = newCompanyDoc.id;
+        companyDoc = await newCompanyDoc.get();
+
+        console.log(`[createEvent] 企業を自動作成完了: ${companyId}`);
+      } catch (error) {
+        console.error(`[createEvent] 企業自動作成エラー: ${(error as Error).message}`);
+        throw new HttpsError(
+          "internal",
+          `企業分析に失敗しました: ${(error as Error).message}`
+        );
+      }
+    } else {
+      companyDoc = companyQuery.docs[0];
+      companyId = companyDoc.id;
+      console.log(`[createEvent] 既存企業を使用: ${companyId}`);
+    }
 
     try {
       console.log(`[createEvent] 予定を作成: ${companyName} - ${eventType}`);

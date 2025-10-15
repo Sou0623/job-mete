@@ -34,6 +34,8 @@ export async function analyzeCompanyWithGemini(
     modelUsed: string;
     tokensUsed: number;
     searchSources: string[];
+    prompt: string;
+    rawResponse: string;
   };
 }> {
   // Gemini APIクライアントを初期化
@@ -86,6 +88,8 @@ export async function analyzeCompanyWithGemini(
     modelUsed: "gemini-2.0-flash-exp",
     tokensUsed: 0, // Gemini APIはトークン数を返さないため0に設定
     searchSources: [], // Groundingの検索ソースは後で実装
+    prompt, // デバッグ用：送信したプロンプト
+    rawResponse: text, // デバッグ用：生のレスポンス
   };
 
   return {

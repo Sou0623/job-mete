@@ -8,13 +8,11 @@ import { useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCompanies } from '@/hooks/useCompanies';
 import Header from '@/components/layout/Header';
 import type { EventType, CreateEventRequest, CreateEventResponse } from '@/types';
 
 export default function EventFormPage() {
   const { user } = useAuth();
-  const { companies } = useCompanies();
   const navigate = useNavigate();
 
   const [companyName, setCompanyName] = useState('');
@@ -94,7 +92,7 @@ export default function EventFormPage() {
       if (err.code === 'unauthenticated') {
         setError('認証が必要です。ログインし直してください。');
       } else if (err.code === 'not-found') {
-        setError('企業が見つかりません。先に企業を登録してください。');
+        setError('企業の自動作成に失敗しました。');
       } else if (err.code === 'invalid-argument') {
         setError(err.message || '入力内容が不正です');
       } else {
@@ -122,7 +120,7 @@ export default function EventFormPage() {
           <h2 className="text-3xl font-bold text-gray-900 mb-6">予定を追加</h2>
 
           <form onSubmit={handleSubmit}>
-            {/* 企業名選択 */}
+            {/* 企業名入力 */}
             <div className="mb-6">
               <label
                 htmlFor="companyName"
@@ -130,36 +128,19 @@ export default function EventFormPage() {
               >
                 企業名 <span className="text-red-500">*</span>
               </label>
-              {companies.length > 0 ? (
-                <select
-                  id="companyName"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isSubmitting}
-                  required
-                >
-                  <option value="">企業を選択...</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.companyName}>
-                      {company.companyName}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                  <p className="text-yellow-800 text-sm">
-                    企業が登録されていません。先に企業を登録してください。
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/companies/new')}
-                    className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
-                  >
-                    企業を登録する →
-                  </button>
-                </div>
-              )}
+              <input
+                type="text"
+                id="companyName"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="例: 株式会社コドモン"
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isSubmitting}
+                required
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                💡 企業が未登録の場合、自動的にAI分析が行われて企業一覧に追加されます
+              </p>
             </div>
 
             {/* イベント種別 */}
@@ -294,10 +275,10 @@ export default function EventFormPage() {
             <div className="flex gap-4">
               <button
                 type="submit"
-                disabled={isSubmitting || !companyName.trim() || companies.length === 0}
+                disabled={isSubmitting || !companyName.trim()}
                 className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 disabled:bg-gray-400 font-medium"
               >
-                {isSubmitting ? '登録中...' : '予定を登録'}
+                {isSubmitting ? 'AI分析中...' : '予定を登録'}
               </button>
               <button
                 type="button"

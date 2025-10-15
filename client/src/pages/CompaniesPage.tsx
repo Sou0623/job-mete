@@ -22,10 +22,10 @@ export default function CompaniesPage() {
   );
 
   /**
-   * 企業登録ページに遷移
+   * 予定登録ページに遷移
    */
-  const handleAddCompany = () => {
-    navigate('/companies/new');
+  const handleAddEvent = () => {
+    navigate('/events/new');
   };
 
   return (
@@ -41,13 +41,16 @@ export default function CompaniesPage() {
             <p className="text-sm text-gray-600 mt-1">
               登録企業数: {companies.length}社
             </p>
+            <p className="text-xs text-gray-500 mt-1">
+              💡 予定を登録すると、企業が自動的に分析されて追加されます
+            </p>
           </div>
 
           <button
-            onClick={handleAddCompany}
+            onClick={handleAddEvent}
             className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium"
           >
-            + 企業を追加
+            + 予定を登録
           </button>
         </div>
 
@@ -95,14 +98,17 @@ export default function CompaniesPage() {
                   </>
                 ) : (
                   <>
-                    <p className="text-gray-600 text-lg mb-4">
+                    <p className="text-gray-600 text-lg mb-2">
                       まだ企業が登録されていません
                     </p>
+                    <p className="text-gray-500 text-sm mb-4">
+                      予定を登録すると、自動的に企業が分析されて一覧に追加されます
+                    </p>
                     <button
-                      onClick={handleAddCompany}
+                      onClick={handleAddEvent}
                       className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium"
                     >
-                      最初の企業を追加
+                      最初の予定を登録
                     </button>
                   </>
                 )}

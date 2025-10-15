@@ -10,6 +10,8 @@ import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import Loading from '@/components/common/Loading';
+import ErrorMessage from '@/components/common/ErrorMessage';
 import type { ReanalyzeCompanyRequest, ReanalyzeCompanyResponse } from '@/types';
 
 export default function CompanyDetailPage() {
@@ -201,11 +203,7 @@ export default function CompanyDetailPage() {
 
   // ローディング状態
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <Loading fullScreen />;
   }
 
   // エラー状態
@@ -239,17 +237,13 @@ export default function CompanyDetailPage() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 py-8">
-          <div className="bg-red-50 border border-red-200 rounded-md p-8 text-center">
-            <p className="text-red-800 text-lg mb-4">
-              {error || '企業が見つかりません'}
-            </p>
-            <button
-              onClick={handleBack}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
-            >
-              企業一覧に戻る
-            </button>
-          </div>
+          <ErrorMessage
+            message={error || '企業が見つかりません'}
+            action={{
+              label: '企業一覧に戻る',
+              onClick: handleBack,
+            }}
+          />
         </main>
       </div>
     );

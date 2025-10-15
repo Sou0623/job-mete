@@ -8,6 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import { useCompanies } from '@/hooks/useCompanies';
 import CompanyCard from '@/components/companies/CompanyCard';
 import Header from '@/components/layout/Header';
+import Loading from '@/components/common/Loading';
+import ErrorMessage from '@/components/common/ErrorMessage';
 
 export default function CompaniesPage() {
   const { companies, loading, error } = useCompanies();
@@ -67,15 +69,15 @@ export default function CompaniesPage() {
 
         {/* ローディング状態 */}
         {loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="py-12">
+            <Loading />
           </div>
         )}
 
         {/* エラー状態 */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-            <p className="text-red-800 text-sm">{error}</p>
+          <div className="mb-6">
+            <ErrorMessage message={error} />
           </div>
         )}
 

@@ -8,6 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import { useEvents } from '@/hooks/useEvents';
 import EventCard from '@/components/events/EventCard';
 import Header from '@/components/layout/Header';
+import Loading from '@/components/common/Loading';
+import ErrorMessage from '@/components/common/ErrorMessage';
 import type { EventStatus } from '@/types/event';
 
 export default function EventsPage() {
@@ -101,15 +103,15 @@ export default function EventsPage() {
 
         {/* ローディング状態 */}
         {loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="py-12">
+            <Loading />
           </div>
         )}
 
         {/* エラー状態 */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-            <p className="text-red-800 text-sm">{error}</p>
+          <div className="mb-6">
+            <ErrorMessage message={error} />
           </div>
         )}
 

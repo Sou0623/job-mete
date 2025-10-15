@@ -76,43 +76,58 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-slate-50">
       <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8">
-          {/* メインカラム (左側) */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* ウェルカム & クイックアクション */}
-            <section className="bg-white p-6 rounded-xl shadow-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-4 lg:gap-8">
+          {/* メインカラム (中央) */}
+          <div className="lg:col-span-3 space-y-8">
+            {/* ウェルカムメッセージ */}
+            <section>
               <h2 className="text-2xl font-bold text-gray-900">
                 ようこそ、{user?.displayName} さん！
               </h2>
               <p className="text-gray-600 mt-1">
                 まずは、今日やることを確認しましょう。
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                <button
-                  onClick={() => navigate('/companies/new')}
-                  className="p-4 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors flex items-center text-left"
-                >
-                  <div className="bg-blue-600 text-white rounded-lg p-3 mr-4">
-                    <Icons.Building className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="font-bold">企業を分析</span>
-                    <p className="text-sm">気になる企業を登録・分析します</p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => navigate('/events/new')}
-                  className="p-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors flex items-center text-left"
-                >
-                  <div className="bg-green-600 text-white rounded-lg p-3 mr-4">
-                    <Icons.Plus className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="font-bold">予定を登録</span>
-                    <p className="text-sm">面接や説明会の予定を追加します</p>
-                  </div>
-                </button>
-              </div>
+            </section>
+
+            {/* クイックアクションボタン（横並び） */}
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <button
+                onClick={() => navigate('/companies/new')}
+                className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1 text-center group"
+              >
+                <div className="bg-blue-600 text-white rounded-lg p-4 mx-auto w-16 h-16 flex items-center justify-center mb-4 group-hover:bg-blue-700 transition-colors">
+                  <Icons.Building className="w-8 h-8" />
+                </div>
+                <h3 className="font-bold text-gray-900 mb-1">企業を分析</h3>
+                <p className="text-sm text-gray-600">気になる企業を登録</p>
+              </button>
+              <button
+                onClick={() => navigate('/events/new')}
+                className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1 text-center group"
+              >
+                <div className="bg-green-600 text-white rounded-lg p-4 mx-auto w-16 h-16 flex items-center justify-center mb-4 group-hover:bg-green-700 transition-colors">
+                  <Icons.Plus className="w-8 h-8" />
+                </div>
+                <h3 className="font-bold text-gray-900 mb-1">予定を登録</h3>
+                <p className="text-sm text-gray-600">面接や説明会の予定</p>
+              </button>
+              <button
+                onClick={() => navigate('/trends')}
+                disabled={companies.length < 3}
+                className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1 text-center group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm disabled:hover:translate-y-0"
+              >
+                <div className={`rounded-lg p-4 mx-auto w-16 h-16 flex items-center justify-center mb-4 transition-colors ${
+                  companies.length < 3
+                    ? 'bg-gray-400'
+                    : 'bg-purple-600 group-hover:bg-purple-700'
+                }`}>
+                  <Icons.Chart className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="font-bold text-gray-900 mb-1">傾向分析</h3>
+                <p className="text-sm text-gray-600">
+                  {companies.length < 3 ? `あと ${3 - companies.length} 社` : 'AIが分析'}
+                </p>
+              </button>
             </section>
 
             {/* 今後の予定 */}
@@ -163,7 +178,22 @@ export default function DashboardPage() {
           </div>
 
           {/* サイドカラム (右側) */}
-          <div className="lg:col-span-1 space-y-8 mt-8 lg:mt-0">
+          <div className="lg:col-span-1 space-y-6 mt-8 lg:mt-0">
+            {/* ユーザーカード */}
+            <section className="bg-white p-6 rounded-xl shadow-sm">
+              <div className="flex flex-col items-center text-center">
+                {user?.photoURL && (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName || 'ユーザー'}
+                    className="w-20 h-20 rounded-full mb-4 border-4 border-blue-100"
+                  />
+                )}
+                <h3 className="text-lg font-bold text-gray-900">{user?.displayName}</h3>
+                <p className="text-sm text-gray-600 mt-1">{user?.email}</p>
+              </div>
+            </section>
+
             {/* サマリー */}
             <section className="bg-white p-6 rounded-xl shadow-sm">
               <h3 className="text-xl font-bold text-gray-900 mb-4">サマリー</h3>
@@ -186,7 +216,7 @@ export default function DashboardPage() {
                     <p className="font-bold text-lg text-gray-900">{events.length} 件</p>
                   </div>
                 </div>
-                 <div className="flex items-center">
+                <div className="flex items-center">
                   <div className="bg-yellow-100 text-yellow-600 rounded-lg p-2 mr-4">
                     <Icons.Clock className="w-5 h-5" />
                   </div>
@@ -196,40 +226,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
-            </section>
-
-            {/* 傾向分析 */}
-            <section className="bg-white p-6 rounded-xl shadow-sm">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">傾向分析</h3>
-              {companies.length < 3 ? (
-                <div>
-                  <div className="relative pt-1">
-                    <div className="flex mb-2 items-center justify-between">
-                      <div><span className="text-xs font-semibold inline-block text-purple-600">あと {3 - companies.length} 社</span></div>
-                      <div className="text-right"><span className="text-xs font-semibold inline-block text-purple-600">{companies.length} / 3</span></div>
-                    </div>
-                    <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-purple-200">
-                      <div style={{ width: `${(companies.length / 3) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-purple-500"></div>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    企業を3社以上登録すると、あなたの志望傾向をAIが分析します。
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-sm text-gray-600 mb-4">
-                    登録企業からあなたの興味関心をAIが分析します。自己分析に役立てましょう。
-                  </p>
-                  <button
-                    onClick={() => navigate('/trends')}
-                    className="w-full p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-bold flex items-center justify-center"
-                  >
-                    <Icons.Chart className="w-5 h-5 mr-2" />
-                    <span>分析結果を見る</span>
-                  </button>
-                </div>
-              )}
             </section>
           </div>
         </div>

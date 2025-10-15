@@ -3,7 +3,7 @@
  * 予定登録API（企業ID取得/作成、Firestore保存、企業統計更新）
  */
 
-import {onCall, HttpsError, CallableRequest} from "firebase-functions/v2/https";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {FieldValue} from "firebase-admin/firestore";
 import {db} from "../../config/firebase";
 import {normalizeCompanyName} from "../../utils/normalizer";
@@ -72,7 +72,12 @@ export const createEvent = onCall<
 >(
   {
     region: "asia-northeast1",
-    cors: true,
+    cors: [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      /https:\/\/.*\.web\.app$/,
+      /https:\/\/.*\.firebaseapp\.com$/,
+    ],
   },
   async (request) => {
     // 1. 認証チェック
@@ -169,8 +174,6 @@ export const createEvent = onCall<
 
     try {
       console.log(`[createEvent] 予定を作成: ${companyName} - ${eventType}`);
-
-      const now = new Date().toISOString();
 
       // 3. Googleカレンダー同期情報を初期化
       const googleCalendar: GoogleCalendar = {

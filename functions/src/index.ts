@@ -16,3 +16,6 @@ export {createCompany} from "./handlers/companies/createCompany";
 
 // 予定管理Functions
 export {createEvent} from "./handlers/events/createEvent";
+
+// 傾向分析Functions
+export {analyzeTrends} from "./handlers/trends/analyzeTrends";

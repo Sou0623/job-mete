@@ -6,6 +6,7 @@
  * 傾向分析結果
  */
 export interface Trend {
+  id: string;
   summary: TrendSummary;
   sourceCompanies: Array<{
     companyId: string;
@@ -14,6 +15,8 @@ export interface Trend {
   analyzedAt: string; // ISO 8601
   companyCount: number;
   modelUsed: string;
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
 }
 
 /**

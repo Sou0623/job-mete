@@ -9,6 +9,7 @@ import CompanyDetailPage from '@/pages/CompanyDetailPage';
 import EventsPage from '@/pages/EventsPage';
 import EventFormPage from '@/pages/EventFormPage';
 import EventDetailPage from '@/pages/EventDetailPage';
+import TrendsPage from '@/pages/TrendsPage';
 
 export default function App() {
   return (
@@ -74,6 +75,16 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <EventDetailPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 傾向分析（認証必須） */}
+          <Route
+            path="/trends"
+            element={
+              <ProtectedRoute>
+                <TrendsPage />
               </ProtectedRoute>
             }
           />

@@ -33,7 +33,12 @@ export const createCompany = onCall<
 >(
   {
     region: "asia-northeast1",
-    cors: true,
+    cors: [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      /https:\/\/.*\.web\.app$/,
+      /https:\/\/.*\.firebaseapp\.com$/,
+    ],
   },
   async (request) => {
     // 1. 認証チェック

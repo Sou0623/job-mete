@@ -122,7 +122,7 @@ export default function EventEditPage() {
   // ローディング状態
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -131,7 +131,7 @@ export default function EventEditPage() {
   // エラー状態
   if (error && !companyName) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <Header />
         <main className="max-w-2xl mx-auto px-4 py-8">
           <div className="bg-red-50 border border-red-200 rounded-md p-8 text-center">
@@ -149,7 +149,7 @@ export default function EventEditPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <Header />
 
       {/* メインコンテンツ */}

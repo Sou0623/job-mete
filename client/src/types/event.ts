@@ -20,6 +20,11 @@ export type EventType =
 export type Status = 'scheduled' | 'completed' | 'cancelled';
 
 /**
+ * 予定ステータス（エイリアス）
+ */
+export type EventStatus = Status;
+
+/**
  * 面接結果
  */
 export type Result = 'passed' | 'failed' | 'waiting' | null;

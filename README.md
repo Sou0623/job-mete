@@ -461,9 +461,7 @@ const TrendsPage = lazy(() => import('@/pages/TrendsPage'));
 
 ## 👨‍💻 作成者
 
-**Your Name**
-- GitHub: [@your-username](https://github.com/your-username)
-- Portfolio: [your-portfolio-url](https://your-portfolio-url.com)
+- GitHub: [@Sou0623](https://github.com/Sou0623)
 
 ---
 

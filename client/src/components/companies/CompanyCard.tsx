@@ -11,6 +11,15 @@ interface CompanyCardProps {
 }
 
 /**
+ * 旧データ構造の型定義（後方互換性のため）
+ */
+type LegacyCompanyAnalysis = {
+  businessOverview?: string;
+  strengths?: string[];
+  industryPosition?: string;
+};
+
+/**
  * 企業カードコンポーネント
  *
  * @param company - 企業データ
@@ -67,27 +76,43 @@ export default function CompanyCard({ company }: CompanyCardProps) {
           <h3 className="text-xl font-bold text-gray-900 mb-1">
             {company.companyName}
           </h3>
-          {company.analysis.industryPosition && (
-            <p className="text-sm text-gray-600">
-              {company.analysis.industryPosition.split('、')[0]}
-            </p>
+          {/* 業界バッジ */}
+          {company.analysis.marketAnalysis?.industry && (
+            <div className="mb-2">
+              <span className="inline-block bg-blue-100 text-[#1A4472] px-3 py-0.5 rounded-full text-xs font-medium border border-blue-300">
+                {company.analysis.marketAnalysis.industry}
+              </span>
+            </div>
           )}
+          {(() => {
+            const legacyAnalysis = company.analysis as LegacyCompanyAnalysis;
+            const industryPosition = company.analysis.marketAnalysis?.industryPosition || legacyAnalysis.industryPosition;
+            return industryPosition ? (
+              <p className="text-sm text-gray-600">
+                {industryPosition.split('、')[0]}
+              </p>
+            ) : null;
+          })()}
         </div>
 
         {/* 再分析バッジ */}
         {needsReanalysis() && (
-          <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded">
+          <span className="bg-yellow-100 text-[#9B8E00] text-xs font-medium px-2.5 py-0.5 rounded border border-yellow-300">
             再分析推奨
           </span>
         )}
       </div>
 
       {/* 事業概要 */}
-      {company.analysis.businessOverview && (
-        <p className="text-sm text-gray-700 mb-4 line-clamp-2">
-          {company.analysis.businessOverview}
-        </p>
-      )}
+      {(() => {
+        const legacyAnalysis = company.analysis as LegacyCompanyAnalysis;
+        const businessSummary = company.analysis.corporateProfile?.businessSummary || legacyAnalysis.businessOverview;
+        return businessSummary ? (
+          <p className="text-sm text-gray-700 mb-4 line-clamp-2">
+            {businessSummary}
+          </p>
+        ) : null;
+      })()}
 
       {/* 統計情報 */}
       <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -103,18 +128,22 @@ export default function CompanyCard({ company }: CompanyCardProps) {
       </div>
 
       {/* 強み（最大3つ表示） */}
-      {company.analysis.strengths && company.analysis.strengths.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {company.analysis.strengths.slice(0, 3).map((strength, index) => (
-            <span
-              key={index}
-              className="bg-blue-50 text-blue-700 text-xs font-medium px-2 py-1 rounded"
-            >
-              {strength}
-            </span>
-          ))}
-        </div>
-      )}
+      {(() => {
+        const legacyAnalysis = company.analysis as LegacyCompanyAnalysis;
+        const strengths = company.analysis.marketAnalysis?.strengths || legacyAnalysis.strengths;
+        return strengths && strengths.length > 0 ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {strengths.slice(0, 3).map((strength, index) => (
+              <span
+                key={index}
+                className="bg-green-100 text-[#2E7D4D] text-xs font-medium px-2 py-1 rounded border border-green-300"
+              >
+                {strength}
+              </span>
+            ))}
+          </div>
+        ) : null;
+      })()}
     </div>
   );
 }

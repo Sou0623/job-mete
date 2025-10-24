@@ -9,6 +9,7 @@ import type {CompanyAnalysis} from "../types";
 
 /**
  * Gemini APIクライアントの初期化
+ * @return {GoogleGenerativeAI} Gemini APIクライアント
  */
 function getGeminiClient(): GoogleGenerativeAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -23,8 +24,8 @@ function getGeminiClient(): GoogleGenerativeAI {
 /**
  * 企業分析をGemini APIで実行
  *
- * @param companyName - 企業名
- * @returns 企業分析結果
+ * @param {string} companyName - 企業名
+ * @return {Promise<Object>} 企業分析結果
  */
 export async function analyzeCompanyWithGemini(
   companyName: string

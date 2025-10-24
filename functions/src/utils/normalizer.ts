@@ -11,8 +11,8 @@
  * - スペースを除去
  * - 記号を除去
  *
- * @param name - 企業名
- * @returns 正規化された企業名
+ * @param {string} name - 企業名
+ * @return {string} 正規化された企業名
  *
  * @example
  * normalizeCompanyName("株式会社メルカリ") // => "めるかり"
@@ -24,5 +24,5 @@ export function normalizeCompanyName(name: string): string {
     .toLowerCase()
     .replace(/株式会社|かぶしきがいしゃ|㈱|有限会社|ゆうげんがいしゃ|合同会社|ごうどうがいしゃ/g, "")
     .replace(/\s+/g, "")
-    .replace(/[\.、。・]/g, "");
+    .replace(/[.、。・]/g, "");
 }

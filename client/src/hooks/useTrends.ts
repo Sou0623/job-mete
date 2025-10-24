@@ -51,10 +51,14 @@ export function useTrends(): UseTrendsReturn {
         if (docSnapshot.exists()) {
           const data = docSnapshot.data();
 
+          console.log('[useTrends] Firestore data.reviewStats:', data.reviewStats);
+          console.log('[useTrends] jobPositionStats:', data.reviewStats?.jobPositionStats);
+
           setTrend({
             id: docSnapshot.id,
             summary: data.summary,
             sourceCompanies: data.sourceCompanies,
+            reviewStats: data.reviewStats || null, // レビュー統計データ
             analyzedAt: data.analyzedAt,
             companyCount: data.companyCount,
             modelUsed: data.modelUsed,

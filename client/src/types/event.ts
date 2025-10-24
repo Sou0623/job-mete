@@ -45,6 +45,8 @@ export interface Event {
   status: Status;
   result?: Result;
   resultMemo?: string;
+  jobPosition?: string; // 選考を受けている職種（例: "バックエンドエンジニア", "営業職"）
+  review?: EventReview; // レビュー情報
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }
@@ -56,4 +58,14 @@ export interface GoogleCalendar {
   eventId: string | null;
   syncStatus: 'synced' | 'pending' | 'failed';
   lastSyncAttempt: string | null; // ISO 8601
+}
+
+/**
+ * イベントレビュー情報
+ */
+export interface EventReview {
+  feedback: string; // 感想（テキストベース）
+  companyMatchRate: number; // 企業とのマッチ度（1〜5、1メモリあたり20%）
+  jobMatchRate: number; // 職種とのマッチ度（1〜5、1メモリあたり20%）
+  reviewedAt: string; // レビュー記入日時（ISO 8601）
 }

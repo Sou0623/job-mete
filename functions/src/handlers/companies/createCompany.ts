@@ -65,7 +65,10 @@ export const createCompany = onCall<
     const normalizedName = normalizeCompanyName(companyName);
 
     // 4. 重複チェック
-    const companiesRef = db.collection("users").doc(userId).collection("companies");
+    const companiesRef = db
+      .collection("users")
+      .doc(userId)
+      .collection("companies");
     const duplicateQuery = await companiesRef
       .where("normalizedName", "==", normalizedName)
       .limit(1)

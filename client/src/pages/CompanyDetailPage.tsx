@@ -3,40 +3,84 @@
  * 企業の分析結果、ユーザーメモ、関連予定を表示
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, updateDoc, deleteDoc, collection, query, getDocs } from 'firebase/firestore';
+import { doc, deleteDoc, collection, query, where, getDocs, orderBy, FirestoreError } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
+import { FirebaseError } from 'firebase/app';
 import { db, functions } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import Header from '@/components/layout/Header';
+import UserModal from '@/components/common/UserModal';
 import Loading from '@/components/common/Loading';
 import ErrorMessage from '@/components/common/ErrorMessage';
-import type { ReanalyzeCompanyRequest, ReanalyzeCompanyResponse } from '@/types';
+import type { ReanalyzeCompanyRequest, ReanalyzeCompanyResponse, Event } from '@/types';
+
+/**
+ * 旧データ構造の型定義（後方互換性のため）
+ */
+type LegacyCompanyAnalysis = {
+  businessOverview?: string;
+  strengths?: string[];
+  recentNews?: string;
+  recruitmentInsights?: string;
+  industryPosition?: string;
+};
 
 export default function CompanyDetailPage() {
   const { companyId } = useParams<{ companyId: string }>();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { company, loading, error } = useCompany(companyId);
   const navigate = useNavigate();
 
-  const [userNotes, setUserNotes] = useState('');
-  const [isSavingNotes, setIsSavingNotes] = useState(false);
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
   const [isReanalyzing, setIsReanalyzing] = useState(false);
 
   /**
-   * ログアウト処理
+   * 企業に関連するイベントを取得
    */
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('ログアウトエラー:', error);
-    }
-  };
+  useEffect(() => {
+    if (!user || !companyId) return;
+
+    const fetchEvents = async () => {
+      try {
+        setLoadingEvents(true);
+        const eventsRef = collection(db, 'users', user.uid, 'events');
+        const q = query(
+          eventsRef,
+          where('companyId', '==', companyId),
+          orderBy('date', 'desc')
+        );
+        const snapshot = await getDocs(q);
+
+        const fetchedEvents: Event[] = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        } as Event));
+
+        setEvents(fetchedEvents);
+      } catch (error: unknown) {
+        console.error('イベント取得エラー:', error);
+
+        // FirestoreErrorの場合、詳細なエラー情報をログに記録
+        if (error instanceof FirestoreError) {
+          console.error('Firestore エラーコード:', error.code);
+          console.error('Firestore エラーメッセージ:', error.message);
+        } else if (error instanceof Error) {
+          console.error('エラーメッセージ:', error.message);
+        }
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    fetchEvents();
+  }, [user, companyId]);
 
   /**
    * 一覧ページに戻る
@@ -45,43 +89,6 @@ export default function CompanyDetailPage() {
     navigate('/companies');
   };
 
-  /**
-   * ユーザーメモを保存
-   */
-  const handleSaveNotes = async () => {
-    if (!user || !companyId) return;
-
-    try {
-      setIsSavingNotes(true);
-      const companyRef = doc(db, 'users', user.uid, 'companies', companyId);
-      await updateDoc(companyRef, {
-        userNotes,
-        updatedAt: new Date().toISOString(),
-      });
-      setIsEditingNotes(false);
-    } catch (error) {
-      console.error('メモ保存エラー:', error);
-      alert('メモの保存に失敗しました');
-    } finally {
-      setIsSavingNotes(false);
-    }
-  };
-
-  /**
-   * メモ編集を開始
-   */
-  const handleEditNotes = () => {
-    setUserNotes(company?.userNotes || '');
-    setIsEditingNotes(true);
-  };
-
-  /**
-   * メモ編集をキャンセル
-   */
-  const handleCancelEdit = () => {
-    setUserNotes('');
-    setIsEditingNotes(false);
-  };
 
   /**
    * 再分析を実行
@@ -112,15 +119,29 @@ export default function CompanyDetailPage() {
       } else {
         alert('再分析に失敗しました');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('再分析エラー:', err);
 
-      if (err.code === 'unauthenticated') {
-        alert('認証が必要です。ログインし直してください。');
-      } else if (err.code === 'not-found') {
-        alert('企業が見つかりません');
+      if (err instanceof FirebaseError) {
+        console.error('Firebase エラーコード:', err.code);
+        console.error('Firebase エラーメッセージ:', err.message);
+
+        if (err.code === 'unauthenticated') {
+          alert('認証が必要です。ログインし直してください。');
+        } else if (err.code === 'not-found') {
+          alert('企業が見つかりません');
+        } else if (err.code === 'functions/resource-exhausted') {
+          alert('API制限に達しました。しばらく待ってから再度お試しください。');
+        } else if (err.code === 'functions/deadline-exceeded') {
+          alert('処理がタイムアウトしました。もう一度お試しください。');
+        } else {
+          alert(`再分析に失敗しました: ${err.message}`);
+        }
+      } else if (err instanceof Error) {
+        console.error('エラーメッセージ:', err.message);
+        alert(`再分析に失敗しました: ${err.message}`);
       } else {
-        alert('再分析に失敗しました。もう一度お試しください。');
+        alert('予期しないエラーが発生しました。もう一度お試しください。');
       }
     } finally {
       setIsReanalyzing(false);
@@ -170,8 +191,28 @@ export default function CompanyDetailPage() {
 
       // 企業一覧に戻る
       navigate('/companies');
-    } catch {
-      alert('企業の削除に失敗しました');
+    } catch (error: unknown) {
+      console.error('企業削除エラー:', error);
+
+      let errorMessage = '企業の削除に失敗しました';
+
+      if (error instanceof FirestoreError) {
+        console.error('Firestore エラーコード:', error.code);
+        console.error('Firestore エラーメッセージ:', error.message);
+
+        if (error.code === 'permission-denied') {
+          errorMessage = '削除する権限がありません。';
+        } else if (error.code === 'not-found') {
+          errorMessage = '削除対象の企業が見つかりません。';
+        } else {
+          errorMessage = `削除に失敗しました: ${error.message}`;
+        }
+      } else if (error instanceof Error) {
+        console.error('エラーメッセージ:', error.message);
+        errorMessage = `削除に失敗しました: ${error.message}`;
+      }
+
+      alert(errorMessage);
       setIsDeleting(false);
       setShowDeleteConfirm(false);
     }
@@ -201,6 +242,65 @@ export default function CompanyDetailPage() {
     });
   };
 
+  /**
+   * 日時をフォーマット（イベント用）
+   */
+  const formatDateTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  /**
+   * マッチ度に応じた色クラスを取得
+   */
+  const getMatchRateColor = (rate: number): string => {
+    if (rate >= 4) return 'bg-green-50 text-[#47845E] border-green-200';
+    if (rate >= 3) return 'bg-yellow-50 text-[#CAC75C] border-yellow-200';
+    return 'bg-red-50 text-[#E57373] border-red-200';
+  };
+
+  /**
+   * ステータスのラベルと色を取得
+   */
+  const getStatusStyle = (status: string): { label: string; className: string } => {
+    const statusMap: Record<string, { label: string; className: string }> = {
+      scheduled: { label: '予定', className: 'bg-blue-50 text-[#1A4472] border-blue-200' },
+      completed: { label: '完了', className: 'bg-green-50 text-[#47845E] border-green-200' },
+      cancelled: { label: 'キャンセル', className: 'bg-gray-100 text-gray-700 border-gray-300' },
+    };
+    return statusMap[status] || { label: status, className: 'bg-gray-100 text-gray-700' };
+  };
+
+  /**
+   * 結果のラベルと色を取得
+   */
+  const getResultStyle = (result: string | null | undefined): { label: string; className: string } => {
+    if (!result) return { label: '未定', className: 'bg-gray-100 text-gray-600 border-gray-300' };
+    const resultMap: Record<string, { label: string; className: string }> = {
+      passed: { label: '合格', className: 'bg-green-50 text-[#47845E] border-green-200' },
+      failed: { label: '不合格', className: 'bg-red-50 text-[#E57373] border-red-200' },
+      waiting: { label: '結果待ち', className: 'bg-yellow-50 text-[#FFB74D] border-yellow-200' },
+    };
+    return resultMap[result] || { label: result, className: 'bg-gray-100 text-gray-600' };
+  };
+
+  /**
+   * 古いデータ構造かどうかを判定
+   */
+  const isLegacyAnalysis = (analysis: unknown): analysis is LegacyCompanyAnalysis => {
+    return (
+      typeof analysis === 'object' &&
+      analysis !== null &&
+      ('businessOverview' in analysis || 'strengths' in analysis || 'recentNews' in analysis)
+    );
+  };
+
   // ローディング状態
   if (loading) {
     return <Loading fullScreen />;
@@ -209,32 +309,8 @@ export default function CompanyDetailPage() {
   // エラー状態
   if (error || !company) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <header className="bg-white border-b border-gray-200 px-4 py-3">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <h1 className="text-xl font-bold text-blue-600">Job Mete</h1>
-            <div className="flex items-center gap-4">
-              {user && (
-                <>
-                  {user.photoURL && (
-                    <img
-                      src={user.photoURL}
-                      alt={user.displayName || 'ユーザー'}
-                      className="w-8 h-8 rounded-full"
-                    />
-                  )}
-                  <span className="text-sm font-medium">{user.displayName}</span>
-                  <button
-                    onClick={handleLogout}
-                    className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md hover:bg-gray-100"
-                  >
-                    ログアウト
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </header>
+      <div className="min-h-screen bg-gray-50">
+        <Header onUserIconClick={() => setShowUserModal(true)} />
 
         <main className="max-w-7xl mx-auto px-4 py-8">
           <ErrorMessage
@@ -245,46 +321,22 @@ export default function CompanyDetailPage() {
             }}
           />
         </main>
+
+        <UserModal isOpen={showUserModal} onClose={() => setShowUserModal(false)} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* ヘッダー */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <h1 className="text-xl font-bold text-blue-600">Job Mete</h1>
-
-          <div className="flex items-center gap-4">
-            {user && (
-              <>
-                {user.photoURL && (
-                  <img
-                    src={user.photoURL}
-                    alt={user.displayName || 'ユーザー'}
-                    className="w-8 h-8 rounded-full"
-                  />
-                )}
-                <span className="text-sm font-medium">{user.displayName}</span>
-                <button
-                  onClick={handleLogout}
-                  className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md hover:bg-gray-100"
-                >
-                  ログアウト
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-50">
+      <Header onUserIconClick={() => setShowUserModal(true)} />
 
       {/* メインコンテンツ */}
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* 戻るボタン */}
         <button
           onClick={handleBack}
-          className="text-blue-600 hover:text-blue-700 mb-6 flex items-center gap-2"
+          className="text-[#1A4472] hover:text-[#47845E] mb-6 flex items-center gap-2 font-medium"
         >
           ← 企業一覧に戻る
         </button>
@@ -296,9 +348,17 @@ export default function CompanyDetailPage() {
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
                 {company.companyName}
               </h2>
-              {company.analysis.industryPosition && (
+              {/* 業界バッジ */}
+              {company.analysis.marketAnalysis?.industry && (
+                <div className="mb-3">
+                  <span className="inline-block bg-blue-100 text-[#1A4472] px-4 py-1 rounded-full text-sm font-medium border border-blue-300">
+                    {company.analysis.marketAnalysis.industry}業界
+                  </span>
+                </div>
+              )}
+              {(company.analysis.marketAnalysis?.industryPosition || (company.analysis as LegacyCompanyAnalysis).industryPosition) && (
                 <p className="text-lg text-gray-600">
-                  {company.analysis.industryPosition}
+                  {company.analysis.marketAnalysis?.industryPosition || (company.analysis as LegacyCompanyAnalysis).industryPosition}
                 </p>
               )}
             </div>
@@ -318,7 +378,7 @@ export default function CompanyDetailPage() {
               <button
                 onClick={handleReanalyze}
                 disabled={isReanalyzing}
-                className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 disabled:bg-gray-400 transition-colors font-medium text-sm"
+                className="bg-[#FFB74D] text-white px-4 py-2 rounded-lg hover:bg-[#FFA726] disabled:bg-gray-400 transition-colors font-medium text-sm shadow-sm"
               >
                 {isReanalyzing ? '再分析中...' : '🔄 再分析'}
               </button>
@@ -326,7 +386,7 @@ export default function CompanyDetailPage() {
             <button
               onClick={handleDeleteClick}
               disabled={isReanalyzing}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:bg-gray-400 transition-colors font-medium text-sm"
+              className="bg-[#E57373] text-white px-4 py-2 rounded-lg hover:bg-red-600 disabled:bg-gray-400 transition-colors font-medium text-sm shadow-sm"
             >
               🗑️ 企業を削除
             </button>
@@ -337,106 +397,364 @@ export default function CompanyDetailPage() {
         <div className="bg-white rounded-lg shadow-md p-8 mb-6">
           <h3 className="text-2xl font-bold text-gray-900 mb-6">企業分析</h3>
 
-          {/* 事業内容 */}
-          <div className="mb-6">
-            <h4 className="text-lg font-semibold text-gray-800 mb-2">
-              事業内容
-            </h4>
-            <p className="text-gray-700 leading-relaxed">
-              {company.analysis.businessOverview}
-            </p>
-          </div>
+          {isLegacyAnalysis(company.analysis) ? (
+            /* 旧データ構造の表示 */
+            <>
+              {/* 事業内容 */}
+              {company.analysis.businessOverview && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                    事業内容
+                  </h4>
+                  <p className="text-gray-700 leading-relaxed">
+                    {company.analysis.businessOverview}
+                  </p>
+                </div>
+              )}
 
-          {/* 強み */}
-          {company.analysis.strengths && company.analysis.strengths.length > 0 && (
-            <div className="mb-6">
-              <h4 className="text-lg font-semibold text-gray-800 mb-3">強み</h4>
-              <div className="flex flex-wrap gap-2">
-                {company.analysis.strengths.map((strength, index) => (
-                  <span
-                    key={index}
-                    className="bg-blue-50 text-blue-700 px-4 py-2 rounded-md font-medium"
-                  >
-                    {strength}
-                  </span>
-                ))}
+              {/* 強み */}
+              {company.analysis.strengths && company.analysis.strengths.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-3">強み</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {company.analysis.strengths.map((strength: string, index: number) => (
+                      <span
+                        key={index}
+                        className="bg-green-100 text-[#2E7D4D] px-4 py-2 rounded-md font-medium border border-green-300"
+                      >
+                        ✓ {strength}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 最近の動向 */}
+              {company.analysis.recentNews && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                    最近の動向
+                  </h4>
+                  <p className="text-gray-700 leading-relaxed">
+                    {company.analysis.recentNews}
+                  </p>
+                </div>
+              )}
+
+              {/* 採用情報 */}
+              {company.analysis.recruitmentInsights && (
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                    採用情報
+                  </h4>
+                  <p className="text-gray-700 leading-relaxed">
+                    {company.analysis.recruitmentInsights}
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            /* 新データ構造の表示 */
+            <>
+              {/* I. 企業概要 */}
+              <div className="mb-8">
+                <h4 className="text-xl font-bold text-[#1A4472] mb-4 pb-2 border-b-2 border-[#1A4472]">
+                  I. 企業概要
+                </h4>
+
+                {/* ミッション */}
+                {company.analysis.corporateProfile?.mission && (
+                  <div className="mb-4">
+                    <h5 className="text-sm font-semibold text-gray-600 mb-2">ミッション・ビジョン</h5>
+                    <p className="text-gray-700 leading-relaxed bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      {company.analysis.corporateProfile.mission}
+                    </p>
+                  </div>
+                )}
+
+                {/* 事業概要 */}
+                {company.analysis.corporateProfile?.businessSummary && (
+                  <div>
+                    <h5 className="text-sm font-semibold text-gray-600 mb-2">事業概要</h5>
+                    <p className="text-gray-700 leading-relaxed">
+                      {company.analysis.corporateProfile.businessSummary}
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
 
-          {/* 最近の動向 */}
-          {company.analysis.recentNews && (
-            <div className="mb-6">
-              <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                最近の動向
-              </h4>
-              <p className="text-gray-700 leading-relaxed">
-                {company.analysis.recentNews}
-              </p>
-            </div>
-          )}
+          {/* II. 企業の強みと市場環境 */}
+          <div className="mb-8">
+            <h4 className="text-xl font-bold text-[#1A4472] mb-4 pb-2 border-b-2 border-[#1A4472]">
+              II. 企業の強みと市場環境
+            </h4>
 
-          {/* 採用情報 */}
-          {company.analysis.recruitmentInsights && (
-            <div>
-              <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                採用情報
-              </h4>
-              <p className="text-gray-700 leading-relaxed">
-                {company.analysis.recruitmentInsights}
-              </p>
-            </div>
-          )}
-        </div>
+            {/* 強み */}
+            {company.analysis.marketAnalysis?.strengths && company.analysis.marketAnalysis.strengths.length > 0 && (
+              <div className="mb-4">
+                <h5 className="text-sm font-semibold text-gray-600 mb-2">強み</h5>
+                <div className="flex flex-wrap gap-2">
+                  {company.analysis.marketAnalysis.strengths.map((strength, index) => (
+                    <span
+                      key={index}
+                      className="bg-green-50 text-[#47845E] px-4 py-2 rounded-md font-medium border border-green-200"
+                    >
+                      ✓ {strength}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {/* ユーザーメモ */}
-        <div className="bg-white rounded-lg shadow-md p-8 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-2xl font-bold text-gray-900">メモ</h3>
-            {!isEditingNotes && (
-              <button
-                onClick={handleEditNotes}
-                className="text-blue-600 hover:text-blue-700 font-medium"
-              >
-                編集
-              </button>
+            {/* 弱み・課題 */}
+            {company.analysis.marketAnalysis?.weaknesses && company.analysis.marketAnalysis.weaknesses.length > 0 && (
+              <div className="mb-4">
+                <h5 className="text-sm font-semibold text-gray-600 mb-2">弱み・課題</h5>
+                <div className="flex flex-wrap gap-2">
+                  {company.analysis.marketAnalysis.weaknesses.map((weakness, index) => (
+                    <span
+                      key={index}
+                      className="bg-orange-100 text-orange-800 px-4 py-2 rounded-md font-medium border border-orange-300"
+                    >
+                      ▲ {weakness}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 業界ポジション */}
+            {company.analysis.marketAnalysis?.industryPosition && (
+              <div className="mb-4">
+                <h5 className="text-sm font-semibold text-gray-600 mb-2">業界ポジション</h5>
+                <p className="text-gray-700 leading-relaxed">
+                  {company.analysis.marketAnalysis.industryPosition}
+                </p>
+              </div>
+            )}
+
+            {/* 競合他社 */}
+            {company.analysis.marketAnalysis?.competitors && company.analysis.marketAnalysis.competitors.length > 0 && (
+              <div>
+                <h5 className="text-sm font-semibold text-gray-600 mb-2">主な競合他社</h5>
+                <div className="flex flex-wrap gap-2">
+                  {company.analysis.marketAnalysis.competitors.map((competitor, index) => (
+                    <span
+                      key={index}
+                      className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md font-medium border border-gray-300"
+                    >
+                      {competitor}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 
-          {isEditingNotes ? (
-            <div>
-              <textarea
-                value={userNotes}
-                onChange={(e) => setUserNotes(e.target.value)}
-                placeholder="企業に関するメモを入力..."
-                className="w-full h-40 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-              <div className="flex gap-3 mt-4">
-                <button
-                  onClick={handleSaveNotes}
-                  disabled={isSavingNotes}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 font-medium"
-                >
-                  {isSavingNotes ? '保存中...' : '保存'}
-                </button>
-                <button
-                  onClick={handleCancelEdit}
-                  disabled={isSavingNotes}
-                  className="bg-gray-200 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-300 font-medium"
-                >
-                  キャンセル
-                </button>
+          {/* III. 将来の方向性 */}
+          <div className="mb-8">
+            <h4 className="text-xl font-bold text-[#1A4472] mb-4 pb-2 border-b-2 border-[#1A4472]">
+              III. 将来の方向性
+            </h4>
+
+            {/* 最近の動向 */}
+            {company.analysis.futureDirection?.recentTrends && (
+              <div className="mb-4">
+                <h5 className="text-sm font-semibold text-gray-600 mb-2">最近の動向</h5>
+                <p className="text-gray-700 leading-relaxed">
+                  {company.analysis.futureDirection.recentTrends}
+                </p>
               </div>
+            )}
+
+            {/* 成長性・将来性 */}
+            {company.analysis.futureDirection?.growthPotential && (
+              <div>
+                <h5 className="text-sm font-semibold text-gray-600 mb-2">成長性・将来性</h5>
+                <p className="text-gray-700 leading-relaxed bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                  {company.analysis.futureDirection.growthPotential}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* IV. 働く環境と文化 */}
+          <div>
+            <h4 className="text-xl font-bold text-[#1A4472] mb-4 pb-2 border-b-2 border-[#1A4472]">
+              IV. 働く環境と文化
+            </h4>
+
+            {/* 社風・組織文化 */}
+            {company.analysis.workEnvironment?.corporateCulture && (
+              <div className="mb-4">
+                <h5 className="text-sm font-semibold text-gray-600 mb-2">社風・組織文化</h5>
+                <p className="text-gray-700 leading-relaxed">
+                  {company.analysis.workEnvironment.corporateCulture}
+                </p>
+              </div>
+            )}
+
+            {/* キャリアパス */}
+            {company.analysis.workEnvironment?.careerPath && (
+              <div className="mb-4">
+                <h5 className="text-sm font-semibold text-gray-600 mb-2">キャリアパス</h5>
+                <p className="text-gray-700 leading-relaxed">
+                  {company.analysis.workEnvironment.careerPath}
+                </p>
+              </div>
+            )}
+
+            {/* 採用情報 */}
+            {company.analysis.workEnvironment?.hiringInfo && (
+              <div>
+                <h5 className="text-sm font-semibold text-gray-600 mb-2">採用情報・求める人物像</h5>
+                <p className="text-gray-700 leading-relaxed bg-purple-50 p-4 rounded-lg border border-purple-200">
+                  {company.analysis.workEnvironment.hiringInfo}
+                </p>
+              </div>
+            )}
+          </div>
+            </>
+          )}
+        </div>
+
+        {/* イベント履歴 */}
+        <div className="bg-white rounded-lg shadow-md p-8 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-2xl font-bold text-gray-900">イベント履歴</h3>
+            <span className="text-sm text-gray-600">{events.length}件</span>
+          </div>
+
+          {loadingEvents ? (
+            <div className="text-center py-8 text-gray-600">
+              イベント履歴を読み込み中...
+            </div>
+          ) : events.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              この企業に関連するイベントはまだありません
             </div>
           ) : (
-            <div>
-              {company.userNotes ? (
-                <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                  {company.userNotes}
-                </p>
-              ) : (
-                <p className="text-gray-500 italic">メモはまだありません</p>
-              )}
+            <div className="space-y-4">
+              {events.map((event) => {
+                const statusStyle = getStatusStyle(event.status);
+                const resultStyle = getResultStyle(event.result);
+
+                return (
+                  <div
+                    key={event.id}
+                    className="border-2 border-gray-200 rounded-lg p-5 hover:border-[#1A4472] transition-colors cursor-pointer"
+                    onClick={() => navigate(`/events/${event.id}`)}
+                  >
+                    {/* イベントヘッダー */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-lg font-bold text-gray-900">
+                            {event.eventType}
+                          </span>
+                          {event.jobPosition && (
+                            <span className="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full border border-purple-300">
+                              {event.jobPosition}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {formatDateTime(event.date)}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-2">
+                        <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${statusStyle.className}`}>
+                          {statusStyle.label}
+                        </span>
+                        {event.result && (
+                          <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${resultStyle.className}`}>
+                            {resultStyle.label}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* レビュー情報 */}
+                    {event.review && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <h5 className="text-sm font-semibold text-gray-800 mb-2">レビュー</h5>
+
+                        {/* マッチ度 */}
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <p className="text-xs text-gray-600 mb-1">企業マッチ度</p>
+                            <div className="flex items-center gap-2">
+                              <div className={`text-sm font-bold px-3 py-1 rounded-md border ${getMatchRateColor(event.review.companyMatchRate)}`}>
+                                {event.review.companyMatchRate}/5
+                              </div>
+                              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                <div
+                                  className={`h-2 rounded-full ${
+                                    event.review.companyMatchRate >= 4
+                                      ? 'bg-green-500'
+                                      : event.review.companyMatchRate >= 3
+                                      ? 'bg-yellow-500'
+                                      : 'bg-red-500'
+                                  }`}
+                                  style={{ width: `${(event.review.companyMatchRate / 5) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-gray-600 mb-1">職種マッチ度</p>
+                            <div className="flex items-center gap-2">
+                              <div className={`text-sm font-bold px-3 py-1 rounded-md border ${getMatchRateColor(event.review.jobMatchRate)}`}>
+                                {event.review.jobMatchRate}/5
+                              </div>
+                              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                <div
+                                  className={`h-2 rounded-full ${
+                                    event.review.jobMatchRate >= 4
+                                      ? 'bg-green-500'
+                                      : event.review.jobMatchRate >= 3
+                                      ? 'bg-yellow-500'
+                                      : 'bg-red-500'
+                                  }`}
+                                  style={{ width: `${(event.review.jobMatchRate / 5) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* フィードバック */}
+                        <div className="bg-gray-50 rounded-md p-3">
+                          <p className="text-sm text-gray-700 leading-relaxed">
+                            {event.review.feedback}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 結果メモ */}
+                    {event.resultMemo && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <h5 className="text-sm font-semibold text-gray-800 mb-2">結果メモ</h5>
+                        <div className="bg-blue-50 rounded-md p-3">
+                          <p className="text-sm text-gray-700 leading-relaxed">
+                            {event.resultMemo}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 詳細リンク */}
+                    <div className="mt-4 pt-3 border-t border-gray-200">
+                      <p className="text-xs text-[#1A4472] hover:text-[#47845E] font-medium">
+                        クリックして詳細を見る →
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -543,6 +861,9 @@ export default function CompanyDetailPage() {
           </div>
         </div>
       )}
+
+      {/* ユーザー設定モーダル */}
+      <UserModal isOpen={showUserModal} onClose={() => setShowUserModal(false)} />
     </div>
   );
 }

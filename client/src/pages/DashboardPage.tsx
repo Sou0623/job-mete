@@ -4,7 +4,7 @@ import { useCompanies } from '@/hooks/useCompanies';
 import { useEvents } from '@/hooks/useEvents';
 import Header from '@/components/layout/Header';
 import Loading from '@/components/common/Loading';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 
 // アイコンを一箇所にまとめて管理しやすくします
 const Icons = {
@@ -39,7 +39,7 @@ export default function DashboardPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // 選択された月の予定のみを表示
-  const { monthEvents, upcomingEvents, pastEventsCount } = useMemo(() => {
+  const { monthEvents, upcomingEvents, pastEventsCount, incompleteEvents, reviewedEventsCount } = useMemo(() => {
     const now = new Date();
 
     // 全体の今後の予定と過去の予定
@@ -47,6 +47,18 @@ export default function DashboardPage() {
       .filter((event) => new Date(event.date) >= now)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const pastCount = events.length - upcoming.length;
+
+    // 過去の未完了予定（status === 'scheduled' かつ review が未記入）
+    const incomplete = events
+      .filter((event) => {
+        const eventDate = new Date(event.date);
+        return eventDate < now && event.status === 'scheduled' && !event.review;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 3); // 最大3件
+
+    // レビューが記入された予定の数（傾向分析に必要）
+    const reviewedCount = events.filter((event) => event.review).length;
 
     // 選択された月の予定のみ
     const filtered = events.filter((event) => {
@@ -60,11 +72,14 @@ export default function DashboardPage() {
     return {
       monthEvents: filtered,
       upcomingEvents: upcoming,
-      pastEventsCount: pastCount
+      pastEventsCount: pastCount,
+      incompleteEvents: incomplete,
+      reviewedEventsCount: reviewedCount
     };
   }, [events, currentMonth]);
 
-  const formatDate = (isoString: string) => {
+  // 日付フォーマット関数（useCallbackでメモ化）
+  const formatDate = useCallback((isoString: string) => {
     const date = new Date(isoString);
     return date.toLocaleString('ja-JP', {
       month: 'long',
@@ -73,46 +88,44 @@ export default function DashboardPage() {
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
+  }, []);
 
-  const getEventTypeBadgeColor = (eventType: string) => {
+  // イベント種別のバッジ色を取得（useCallbackでメモ化）
+  const getEventTypeBadgeColor = useCallback((eventType: string) => {
     const colors: { [key: string]: string } = {
-      '説明会': 'bg-blue-100 text-blue-800',
-      '一次面接': 'bg-green-100 text-green-800',
-      '二次面接': 'bg-yellow-100 text-yellow-800',
-      '最終面接': 'bg-red-100 text-red-800',
-      'インターン': 'bg-purple-100 text-purple-800',
-      'カジュアル面談': 'bg-indigo-100 text-indigo-800',
+      '説明会': 'bg-blue-100 text-[#1A4472] border-blue-300',
+      '一次面接': 'bg-green-100 text-[#2E7D4D] border-green-300',
+      '二次面接': 'bg-yellow-100 text-[#9B8E00] border-yellow-300',
+      '最終面接': 'bg-red-100 text-red-800 border-red-300',
+      'インターン': 'bg-purple-100 text-purple-800 border-purple-300',
+      'カジュアル面談': 'bg-indigo-100 text-indigo-800 border-indigo-300',
     };
-    return colors[eventType] || 'bg-gray-100 text-gray-800';
-  };
+    return colors[eventType] || 'bg-gray-100 text-gray-700 border-gray-300';
+  }, []);
 
   const loading = companiesLoading || eventsLoading;
 
-  const handleLogout = async () => {
+  // ログアウト処理（useCallbackでメモ化）
+  const handleLogout = useCallback(async () => {
     try {
       await logout();
       navigate('/login');
     } catch (error) {
       console.error('ログアウトエラー:', error);
     }
-  };
+  }, [logout, navigate]);
 
-  // 月を変更
-  const goToPreviousMonth = () => {
+  // 月を変更（useCallbackでメモ化）
+  const goToPreviousMonth = useCallback(() => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-  };
+  }, [currentMonth]);
 
-  const goToNextMonth = () => {
+  const goToNextMonth = useCallback(() => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-  };
+  }, [currentMonth]);
 
-  const goToToday = () => {
-    setCurrentMonth(new Date());
-  };
-
-  // カレンダー用の日付配列を生成
-  const generateCalendarDays = () => {
+  // カレンダー用の日付配列を生成（useCallbackでメモ化）
+  const generateCalendarDays = useCallback(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
 
@@ -143,10 +156,10 @@ export default function DashboardPage() {
     }
 
     return days;
-  };
+  }, [currentMonth]);
 
-  // 特定の日に予定があるか確認（選択された月の予定から）
-  const getEventsForDate = (date: Date) => {
+  // 特定の日に予定があるか確認（useCallbackでメモ化）
+  const getEventsForDate = useCallback((date: Date) => {
     return monthEvents.filter((event) => {
       const eventDate = new Date(event.date);
       return (
@@ -155,32 +168,32 @@ export default function DashboardPage() {
         eventDate.getDate() === date.getDate()
       );
     });
-  };
+  }, [monthEvents]);
 
-  // 今日の日付か確認
-  const isToday = (date: Date) => {
+  // 今日の日付か確認（useCallbackでメモ化）
+  const isToday = useCallback((date: Date) => {
     const today = new Date();
     return (
       date.getFullYear() === today.getFullYear() &&
       date.getMonth() === today.getMonth() &&
       date.getDate() === today.getDate()
     );
-  };
+  }, []);
 
   if (loading) {
     return <Loading fullScreen />;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gray-50">
       <Header onUserIconClick={() => setShowUserModal(true)} />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+     <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 lg:gap-8">
           {/* メインカラム (中央) */}
           <div className="lg:col-span-3 space-y-8">
             {/* ウェルカムメッセージ */}
             <section>
-              <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              <h2 className="text-4xl font-bold text-[#1A4472]">
                 ようこそ、{user?.displayName} さん！
               </h2>
               <div className="flex items-center gap-4 mt-2">
@@ -189,7 +202,7 @@ export default function DashboardPage() {
                 </p>
                 <div className="h-4 w-px bg-gray-300"></div>
                 <p className="text-xs text-gray-500 flex items-center gap-1">
-                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-[#1A4472]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   登録企業: {companies.length}社 | 予定: {events.length}件
@@ -203,7 +216,7 @@ export default function DashboardPage() {
                 onClick={() => navigate('/companies/new')}
                 className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-center group h-[200px] flex flex-col items-center justify-center border border-gray-200"
               >
-                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-lg p-4 mx-auto w-16 h-16 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="bg-[#1A4472] text-white rounded-lg p-4 mx-auto w-16 h-16 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <Icons.Building className="w-8 h-8" />
                 </div>
                 <h3 className="font-bold text-gray-900 mb-1 text-lg">企業を分析</h3>
@@ -213,7 +226,7 @@ export default function DashboardPage() {
                 onClick={() => navigate('/events/new')}
                 className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-center group h-[200px] flex flex-col items-center justify-center border border-gray-200"
               >
-                <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-lg p-4 mx-auto w-16 h-16 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="bg-[#47845E] text-white rounded-lg p-4 mx-auto w-16 h-16 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <Icons.Plus className="w-8 h-8" />
                 </div>
                 <h3 className="font-bold text-gray-900 mb-1 text-lg">予定を登録</h3>
@@ -221,28 +234,114 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={() => navigate('/trends')}
-                disabled={companies.length < 3}
+                disabled={reviewedEventsCount < 3}
                 className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-center group h-[200px] flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg disabled:hover:translate-y-0 border border-gray-200"
               >
-                <div className={`rounded-lg p-4 mx-auto w-16 h-16 flex items-center justify-center mb-4 transition-transform ${
-                  companies.length < 3
+                <div className={`rounded-lg p-4 mx-auto w-16 h-16 flex items-center justify-center mb-4 transition-transform text-white ${
+                  reviewedEventsCount < 3
                     ? 'bg-gray-400'
-                    : 'bg-gradient-to-br from-purple-500 to-pink-600 group-hover:scale-110'
+                    : 'bg-[#1A4472] group-hover:scale-110'
                 }`}>
-                  <Icons.Chart className="w-8 h-8 text-white" />
+                  <Icons.Chart className="w-8 h-8" />
                 </div>
                 <h3 className="font-bold text-gray-900 mb-1 text-lg">傾向分析</h3>
                 <p className="text-sm text-gray-600">
-                  {companies.length < 3 ? `あと ${3 - companies.length} 社` : 'AIが分析'}
+                  {reviewedEventsCount < 3 ? `レビュー済み ${reviewedEventsCount}/3 件` : 'AIが分析'}
                 </p>
               </button>
             </section>
 
+            {/* 過去の未完了予定セクション */}
+            {incompleteEvents.length > 0 && (
+              <section className="bg-amber-50 p-6 rounded-2xl shadow-lg border-2 border-amber-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-[#E57373] text-white rounded-lg p-2">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900">レビュー未記入の予定</h3>
+                  </div>
+                  <span className="bg-[#E57373] text-white px-3 py-1 rounded-full text-sm font-bold">
+                    {incompleteEvents.length}件
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700 mb-4">
+                  完了した予定のレビュー（感想・マッチ度）を記入して、傾向分析の精度を上げましょう！
+                </p>
+                <div className="space-y-3">
+                  {incompleteEvents.map((event) => (
+                    <div
+                      key={event.id}
+                      onClick={() => navigate(`/events/${event.id}`)}
+                      className="flex items-center p-4 bg-white rounded-xl hover:shadow-md cursor-pointer transition-all border-2 border-amber-100 hover:border-amber-300"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={`text-xs px-3 py-1 rounded-full font-medium border ${getEventTypeBadgeColor(event.eventType)}`}>
+                            {event.eventType}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(event.date).toLocaleDateString('ja-JP', {
+                              month: 'numeric',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-base font-bold text-gray-900 mb-1">
+                          {event.companyName}
+                        </p>
+                        <p className="text-sm text-gray-600">{formatDate(event.date)}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-white bg-[#E57373] px-3 py-1 rounded-lg">
+                          レビューを記入
+                        </span>
+                        <Icons.ChevronRight className="w-5 h-5 text-[#E57373]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* 予定カレンダー */}
             <section className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200">
               {/* 月ナビゲーションとビュー切り替え */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between mb-6 relative">
+                {/* 左側：ビュー切り替えボタン */}
+                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      viewMode === 'list'
+                        ? 'bg-[#1A4472] text-white shadow-md'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                    リスト
+                  </button>
+                  <button
+                    onClick={() => setViewMode('calendar')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      viewMode === 'calendar'
+                        ? 'bg-[#1A4472] text-white shadow-md'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    カレンダー
+                  </button>
+                </div>
+
+                {/* 中央：月ナビゲーション */}
+                <div className="flex items-center gap-3 absolute left-1/2 transform -translate-x-1/2">
                   <button
                     onClick={goToPreviousMonth}
                     className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -251,7 +350,7 @@ export default function DashboardPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  <h3 className="text-2xl font-bold text-[#1A4472] whitespace-nowrap">
                     {currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月
                   </h3>
                   <button
@@ -262,50 +361,15 @@ export default function DashboardPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
-                  <button
-                    onClick={goToToday}
-                    className="text-sm bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-600 px-4 py-2 rounded-lg hover:from-blue-200 hover:to-indigo-200 transition-all font-medium shadow-sm"
-                  >
-                    今日
-                  </button>
                 </div>
-                <div className="flex items-center gap-3">
-                  {/* ビュー切り替えボタン */}
-                  <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                    <button
-                      onClick={() => setViewMode('list')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                        viewMode === 'list'
-                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                      </svg>
-                      リスト
-                    </button>
-                    <button
-                      onClick={() => setViewMode('calendar')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                        viewMode === 'calendar'
-                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      カレンダー
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => navigate('/events')}
-                    className="text-sm bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 px-4 py-2 rounded-lg hover:from-blue-100 hover:to-indigo-100 transition-all font-semibold border border-blue-200"
-                  >
-                    すべて見る →
-                  </button>
-                </div>
+
+                {/* 右側：すべて見るボタン */}
+                <button
+                  onClick={() => navigate('/events')}
+                  className="text-sm bg-[#1A4472] text-white px-4 py-2 rounded-lg hover:bg-[#47845E] transition-all font-semibold shadow-sm"
+                >
+                  すべて見る →
+                </button>
               </div>
 
               {viewMode === 'list' ? (
@@ -363,7 +427,7 @@ export default function DashboardPage() {
 
                   {/* カレンダーグリッド */}
                   <div className="grid grid-cols-7 gap-2">
-                    {generateCalendarDays().map((day, index) => {
+                  {generateCalendarDays().map((day, index) => {
                       const dayEvents = getEventsForDate(day.date);
                       const isTodayDate = isToday(day.date);
 
@@ -373,7 +437,7 @@ export default function DashboardPage() {
                           className={`min-h-[80px] p-2 border rounded-lg transition-all ${
                             day.isCurrentMonth
                               ? isTodayDate
-                                ? 'bg-blue-50 border-blue-300 border-2'
+                                ? 'bg-blue-50 border-[#1A4472] border-2'
                                 : 'bg-white border-gray-200 hover:border-gray-300'
                               : 'bg-gray-50 border-gray-100'
                           } ${dayEvents.length > 0 ? 'cursor-pointer' : ''}`}
@@ -386,7 +450,7 @@ export default function DashboardPage() {
                           <div className={`text-sm font-medium mb-1 ${
                             day.isCurrentMonth
                               ? isTodayDate
-                                ? 'text-blue-600 font-bold'
+                                ? 'text-[#1A4472] font-bold'
                                 : 'text-gray-900'
                               : 'text-gray-400'
                           }`}>
@@ -430,11 +494,11 @@ export default function DashboardPage() {
                   <img
                     src={user.photoURL}
                     alt={user.displayName || 'ユーザー'}
-                    className="w-16 h-16 rounded-full mb-3 border-4 border-blue-100"
+                    className="w-16 h-16 rounded-full mb-3 border-4 border-[#1A4472]/20"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full mb-3 bg-blue-100 flex items-center justify-center border-4 border-blue-200">
-                    <span className="text-2xl font-bold text-blue-600">
+                  <div className="w-16 h-16 rounded-full mb-3 bg-blue-50 flex items-center justify-center border-4 border-[#1A4472]/20">
+                    <span className="text-2xl font-bold text-[#1A4472]">
                       {user?.displayName?.charAt(0) || 'U'}
                     </span>
                   </div>
@@ -449,33 +513,33 @@ export default function DashboardPage() {
               onClick={() => setShowSummaryModal(true)}
               className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 w-full text-left border border-gray-200"
             >
-              <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4">サマリー</h3>
+              <h3 className="text-xl font-bold text-[#1A4472] mb-4">サマリー</h3>
               <div className="space-y-4">
                 <div className="flex items-center">
-                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-lg p-2 mr-4">
+                  <div className="bg-[#1A4472] text-white rounded-lg p-2 mr-4">
                     <Icons.Building className="w-5 h-5" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">登録企業数</p>
-                    <p className="font-bold text-xl text-blue-600">{companies.length} 社</p>
+                    <p className="font-bold text-xl text-[#1A4472]">{companies.length} 社</p>
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-lg p-2 mr-4">
+                  <div className="bg-[#47845E] text-white rounded-lg p-2 mr-4">
                     <Icons.Calendar className="w-5 h-5" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">総予定数</p>
-                    <p className="font-bold text-xl text-green-600">{events.length} 件</p>
+                    <p className="font-bold text-xl text-[#47845E]">{events.length} 件</p>
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <div className="bg-gradient-to-br from-yellow-500 to-orange-600 text-white rounded-lg p-2 mr-4">
+                  <div className="bg-[#CAC75C] text-white rounded-lg p-2 mr-4">
                     <Icons.Clock className="w-5 h-5" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">完了した予定</p>
-                    <p className="font-bold text-xl text-yellow-600">{pastEventsCount} 件</p>
+                    <p className="font-bold text-xl text-[#CAC75C]">{pastEventsCount} 件</p>
                   </div>
                 </div>
               </div>
@@ -508,18 +572,18 @@ export default function DashboardPage() {
               {/* 基本統計 */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-blue-50 rounded-xl p-6 text-center border-2 border-blue-100">
-                  <Icons.Building className="w-12 h-12 text-blue-600 mx-auto mb-3" />
-                  <p className="text-3xl font-bold text-blue-600 mb-1">{companies.length}</p>
+                  <Icons.Building className="w-12 h-12 text-[#1A4472] mx-auto mb-3" />
+                  <p className="text-3xl font-bold text-[#1A4472] mb-1">{companies.length}</p>
                   <p className="text-sm text-gray-600">登録企業数</p>
                 </div>
                 <div className="bg-green-50 rounded-xl p-6 text-center border-2 border-green-100">
-                  <Icons.Calendar className="w-12 h-12 text-green-600 mx-auto mb-3" />
-                  <p className="text-3xl font-bold text-green-600 mb-1">{events.length}</p>
+                  <Icons.Calendar className="w-12 h-12 text-[#47845E] mx-auto mb-3" />
+                  <p className="text-3xl font-bold text-[#47845E] mb-1">{events.length}</p>
                   <p className="text-sm text-gray-600">総予定数</p>
                 </div>
                 <div className="bg-yellow-50 rounded-xl p-6 text-center border-2 border-yellow-100">
-                  <Icons.Clock className="w-12 h-12 text-yellow-600 mx-auto mb-3" />
-                  <p className="text-3xl font-bold text-yellow-600 mb-1">{pastEventsCount}</p>
+                  <Icons.Clock className="w-12 h-12 text-[#CAC75C] mx-auto mb-3" />
+                  <p className="text-3xl font-bold text-[#CAC75C] mb-1">{pastEventsCount}</p>
                   <p className="text-sm text-gray-600">完了した予定</p>
                 </div>
               </div>
@@ -541,7 +605,7 @@ export default function DashboardPage() {
                         className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="bg-blue-100 text-blue-600 rounded-lg p-2">
+                          <div className="bg-blue-50 text-[#1A4472] rounded-lg p-2">
                             <Icons.Building className="w-4 h-4" />
                           </div>
                           <span className="font-medium text-gray-900">{company.companyName}</span>
@@ -559,7 +623,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                     <p className="text-sm text-gray-600 mb-1">今後の予定</p>
-                    <p className="text-2xl font-bold text-green-600">{upcomingEvents.length} 件</p>
+                    <p className="text-2xl font-bold text-[#47845E]">{upcomingEvents.length} 件</p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <p className="text-sm text-gray-600 mb-1">完了済み</p>
@@ -625,11 +689,11 @@ export default function DashboardPage() {
                   <img
                     src={user.photoURL}
                     alt={user.displayName || 'ユーザー'}
-                    className="w-24 h-24 rounded-full mb-4 border-4 border-blue-100"
+                    className="w-24 h-24 rounded-full mb-4 border-4 border-[#1A4472]/20"
                   />
                 ) : (
-                  <div className="w-24 h-24 rounded-full mb-4 bg-blue-100 flex items-center justify-center border-4 border-blue-200">
-                    <span className="text-4xl font-bold text-blue-600">
+                  <div className="w-24 h-24 rounded-full mb-4 bg-blue-50 flex items-center justify-center border-4 border-[#1A4472]/20">
+                    <span className="text-4xl font-bold text-[#1A4472]">
                       {user?.displayName?.charAt(0) || 'U'}
                     </span>
                   </div>
@@ -662,15 +726,15 @@ export default function DashboardPage() {
                 <h4 className="font-bold text-gray-900">連携サービス</h4>
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                   <div className="flex items-center gap-3 mb-2">
-                    <Icons.Calendar className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium text-blue-900">Googleカレンダー</span>
+                    <Icons.Calendar className="w-5 h-5 text-[#1A4472]" />
+                    <span className="font-medium text-[#1A4472]">Googleカレンダー</span>
                   </div>
-                  <p className="text-sm text-blue-700 mb-3">
+                  <p className="text-sm text-gray-700 mb-3">
                     予定を自動的にGoogleカレンダーに同期します
                   </p>
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-green-700">連携済み</span>
+                    <div className="w-2 h-2 bg-[#47845E] rounded-full"></div>
+                    <span className="text-sm font-medium text-[#47845E]">連携済み</span>
                   </div>
                 </div>
               </div>
@@ -680,15 +744,15 @@ export default function DashboardPage() {
                 <h4 className="font-bold text-gray-900">利用状況</h4>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-blue-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-blue-600">{companies.length}</p>
+                    <p className="text-2xl font-bold text-[#1A4472]">{companies.length}</p>
                     <p className="text-xs text-gray-600 mt-1">企業</p>
                   </div>
                   <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-green-600">{events.length}</p>
+                    <p className="text-2xl font-bold text-[#47845E]">{events.length}</p>
                     <p className="text-xs text-gray-600 mt-1">予定</p>
                   </div>
                   <div className="bg-yellow-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-yellow-600">{pastEventsCount}</p>
+                    <p className="text-2xl font-bold text-[#CAC75C]">{pastEventsCount}</p>
                     <p className="text-xs text-gray-600 mt-1">完了</p>
                   </div>
                 </div>

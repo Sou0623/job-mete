@@ -64,6 +64,65 @@ node_modules/
 
 # dotenv environment variables file
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.local
 
 # dataconnect generated files
 .dataconnect
+
+# ===================================
+# Job Mete - 機密情報とローカル専用ファイル
+# ===================================
+
+# Claude AI設定（プロンプトやプロジェクト固有情報）
+# ポートフォリオ公開時は除外
+CLAUDE.md
+.claude/
+claude-settings.json
+
+# 内部設計ドキュメント（機密情報を含む可能性）
+# ポートフォリオ公開時は除外
+docs/
+
+# Firebase設定（実際のプロジェクトID）
+.firebaserc
+firestore-debug.log
+ui-debug.log
+
+# Vite・React関連
+dist/
+dist-ssr/
+.vite/
+*.tsbuildinfo
+
+# テスト関連
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# OS固有ファイル
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Desktop.ini
+
+# エディタ・IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+*.iml
+*.swp
+*.swo
+
+# 動画ファイル（画面録画など）
+*.mov
+*.mp4
+*.avi
+画面収録*.mov

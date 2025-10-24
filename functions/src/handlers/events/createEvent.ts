@@ -40,6 +40,7 @@ interface CreateEventRequest {
   endDate: string; // ISO 8601
   location?: string;
   memo?: string;
+  jobPosition?: string; // 応募職種
   syncToCalendar?: boolean;
 }
 
@@ -86,7 +87,16 @@ export const createEvent = onCall<
     }
 
     const userId = request.auth.uid;
-    const {companyName, eventType, date, endDate, location, memo, syncToCalendar} = request.data;
+    const {
+      companyName,
+      eventType,
+      date,
+      endDate,
+      location,
+      memo,
+      jobPosition,
+      syncToCalendar,
+    } = request.data;
 
     // バリデーション
     if (!companyName || !companyName.trim()) {
@@ -103,7 +113,10 @@ export const createEvent = onCall<
 
     // 2. 企業名から企業ID取得（なければ自動作成）
     const normalizedName = normalizeCompanyName(companyName.trim());
-    const companiesRef = db.collection("users").doc(userId).collection("companies");
+    const companiesRef = db
+      .collection("users")
+      .doc(userId)
+      .collection("companies");
     const companyQuery = await companiesRef
       .where("normalizedName", "==", normalizedName)
       .limit(1)
@@ -198,6 +211,7 @@ export const createEvent = onCall<
         endDate,
         location: location || "",
         memo: memo || "",
+        jobPosition: jobPosition || "", // 応募職種
         googleCalendar,
         status: "scheduled" as const,
         result: null,
@@ -214,7 +228,7 @@ export const createEvent = onCall<
       await companyDoc.ref.update({
         "stats.eventCount": FieldValue.increment(1),
         "stats.lastEventDate": date,
-        updatedAt: FieldValue.serverTimestamp(),
+        "updatedAt": FieldValue.serverTimestamp(),
       });
 
       console.log(`[createEvent] 企業統計を更新完了: ${companyId}`);

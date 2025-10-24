@@ -6,10 +6,10 @@
 /**
  * 指定した関数を Exponential Backoff でリトライ
  *
- * @param fn - リトライする関数
- * @param maxRetries - 最大リトライ回数（デフォルト: 3）
- * @param initialDelay - 初回遅延時間（ミリ秒、デフォルト: 1000）
- * @returns 関数の実行結果
+ * @param {Function} fn - リトライする関数
+ * @param {number} maxRetries - 最大リトライ回数（デフォルト: 3）
+ * @param {number} initialDelay - 初回遅延時間（ミリ秒、デフォルト: 1000）
+ * @return {Promise<T>} 関数の実行結果
  */
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,

@@ -3,12 +3,14 @@
  * Firebase Authentication を使ったユーザー認証状態の管理
  */
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import {
   onAuthStateChanged,
   signInWithPopup,
   signOut,
   GoogleAuthProvider,
+  updateProfile,
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { auth } from '@/services/firebase';
@@ -21,6 +23,7 @@ interface AuthContextType {
   loading: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
+  updateUserProfile: (displayName: string, photoURL?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,8 +63,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signOut(auth);
   };
 
+  /**
+   * ユーザープロフィールを更新
+   */
+  const updateUserProfile = async (displayName: string, photoURL?: string) => {
+    if (!auth.currentUser) {
+      throw new Error('ログインしていません');
+    }
+
+    await updateProfile(auth.currentUser, {
+      displayName,
+      ...(photoURL && { photoURL }),
+    });
+
+    // ユーザー情報を再取得して状態を更新
+    setUser({ ...auth.currentUser });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

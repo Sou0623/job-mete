@@ -6,6 +6,7 @@ import LoginPage from '@/pages/LoginPage';
 import DashboardPage from '@/pages/DashboardPage';
 import CompaniesPage from '@/pages/CompaniesPage';
 import CompanyDetailPage from '@/pages/CompanyDetailPage';
+import CompanyFormPage from '@/pages/CompanyFormPage';
 import EventsPage from '@/pages/EventsPage';
 import EventFormPage from '@/pages/EventFormPage';
 import EventEditPage from '@/pages/EventEditPage';
@@ -36,6 +37,16 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <CompaniesPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 企業登録（認証必須） */}
+          <Route
+            path="/companies/new"
+            element={
+              <ProtectedRoute>
+                <CompanyFormPage />
               </ProtectedRoute>
             }
           />

@@ -40,6 +40,7 @@ export interface CreateEventRequest {
   endDate: string; // ISO 8601
   location?: string;
   memo?: string;
+  jobPosition?: string; // 応募職種
   syncToCalendar?: boolean;
 }
 

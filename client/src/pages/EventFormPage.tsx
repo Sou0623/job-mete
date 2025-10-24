@@ -6,10 +6,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
+import { FirebaseError } from 'firebase/app';
 import { functions } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/layout/Header';
-import type { EventType, CreateEventRequest, CreateEventResponse } from '@/types';
+import {
+  initializeGoogleCalendar,
+  authenticateGoogleCalendar,
+  createCalendarEvent,
+  hasValidToken,
+} from '@/services/googleCalendar';
+import type {
+  EventType,
+  CreateEventRequest,
+  CreateEventResponse,
+} from '@/types';
 
 export default function EventFormPage() {
   const { user } = useAuth();
@@ -21,10 +32,30 @@ export default function EventFormPage() {
   const [endDate, setEndDate] = useState('');
   const [location, setLocation] = useState('');
   const [memo, setMemo] = useState('');
-  const [syncToCalendar, setSyncToCalendar] = useState(false); // デフォルトOFF（未実装のため）
+  const [jobPosition, setJobPosition] = useState(''); // 職種
+  const [syncToCalendar, setSyncToCalendar] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [calendarInitialized, setCalendarInitialized] = useState(false);
+
+  /**
+   * Google Calendar APIの初期化
+   */
+  useEffect(() => {
+    const initCalendar = async () => {
+      try {
+        await initializeGoogleCalendar();
+        setCalendarInitialized(true);
+      } catch (error) {
+        console.error(
+          '[EventFormPage] Google Calendar初期化エラー:',
+          error
+        );
+      }
+    };
+    initCalendar();
+  }, []);
 
   /**
    * 終了日時を開始日時と同じにする（デフォルト）
@@ -63,8 +94,46 @@ export default function EventFormPage() {
       setIsSubmitting(true);
       setError(null);
 
+      // Googleカレンダー同期の前処理
+      let calendarEventId: string | undefined;
+      if (syncToCalendar) {
+        try {
+          // トークンがない場合は認証
+          if (!hasValidToken()) {
+            await authenticateGoogleCalendar();
+          }
+
+          // カレンダーイベントを作成
+          calendarEventId = await createCalendarEvent({
+            companyName: companyName.trim(),
+            eventType,
+            startTime: new Date(date).toISOString(),
+            endTime: new Date(endDate).toISOString(),
+            location: location.trim(),
+            memo: memo.trim(),
+          });
+
+          console.log(
+            '[EventFormPage] カレンダーイベント作成成功:',
+            calendarEventId
+          );
+        } catch (calendarError) {
+          console.error(
+            '[EventFormPage] カレンダー同期エラー:',
+            calendarError
+          );
+          // カレンダー同期エラーは警告のみ、予定登録は続行
+          setError(
+            'カレンダー同期に失敗しましたが、予定は登録されます'
+          );
+        }
+      }
+
       // createEvent Function を呼び出し
-      const createEventFn = httpsCallable<CreateEventRequest, CreateEventResponse>(
+      const createEventFn = httpsCallable<
+        CreateEventRequest,
+        CreateEventResponse
+      >(
         functions,
         'createEvent'
       );
@@ -76,6 +145,7 @@ export default function EventFormPage() {
         endDate: new Date(endDate).toISOString(),
         location: location.trim(),
         memo: memo.trim(),
+        jobPosition: jobPosition.trim(),
         syncToCalendar,
       });
 
@@ -85,18 +155,22 @@ export default function EventFormPage() {
       } else {
         setError('予定の登録に失敗しました');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('予定登録エラー:', err);
 
       // Firebase Functions のエラーメッセージを表示
-      if (err.code === 'unauthenticated') {
-        setError('認証が必要です。ログインし直してください。');
-      } else if (err.code === 'not-found') {
-        setError('企業の自動作成に失敗しました。');
-      } else if (err.code === 'invalid-argument') {
-        setError(err.message || '入力内容が不正です');
+      if (err instanceof FirebaseError) {
+        if (err.code === 'unauthenticated') {
+          setError('認証が必要です。ログインし直してください。');
+        } else if (err.code === 'not-found') {
+          setError('企業の自動作成に失敗しました。');
+        } else if (err.code === 'invalid-argument') {
+          setError(err.message || '入力内容が不正です');
+        } else {
+          setError('予定の登録に失敗しました。もう一度お試しください。');
+        }
       } else {
-        setError('予定の登録に失敗しました。もう一度お試しください。');
+        setError('予期しないエラーが発生しました。もう一度お試しください。');
       }
     } finally {
       setIsSubmitting(false);
@@ -117,7 +191,7 @@ export default function EventFormPage() {
       {/* メインコンテンツ */}
       <main className="max-w-2xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-md p-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">予定を追加</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">予定を登録</h2>
 
           <form onSubmit={handleSubmit}>
             {/* 企業名入力 */}
@@ -226,6 +300,28 @@ export default function EventFormPage() {
               />
             </div>
 
+            {/* 職種 */}
+            <div className="mb-6">
+              <label
+                htmlFor="jobPosition"
+                className="block text-sm font-semibold text-gray-700 mb-2"
+              >
+                応募職種
+              </label>
+              <input
+                type="text"
+                id="jobPosition"
+                value={jobPosition}
+                onChange={(e) => setJobPosition(e.target.value)}
+                placeholder="例: バックエンドエンジニア / 営業職 / データサイエンティスト"
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isSubmitting}
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                💡 選考を受けている職種を入力すると、後でマッチ度分析に活用できます
+              </p>
+            </div>
+
             {/* メモ */}
             <div className="mb-6">
               <label
@@ -245,22 +341,46 @@ export default function EventFormPage() {
               />
             </div>
 
-            {/* Googleカレンダー同期（未実装） */}
-            <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-md">
-              <label className="flex items-center gap-2 cursor-not-allowed opacity-50">
+            {/* Googleカレンダー同期 */}
+            <div
+              className={
+                `mb-6 p-4 border rounded-md ` +
+                `${calendarInitialized
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-gray-50 border-gray-200'
+                }`
+              }
+            >
+              <label
+                className={
+                  `flex items-center gap-2 ` +
+                  `${calendarInitialized
+                    ? 'cursor-pointer'
+                    : 'cursor-not-allowed opacity-50'
+                  }`
+                }
+              >
                 <input
                   type="checkbox"
                   checked={syncToCalendar}
                   onChange={(e) => setSyncToCalendar(e.target.checked)}
-                  disabled={true}
+                  disabled={!calendarInitialized || isSubmitting}
                   className="w-4 h-4"
                 />
-                <span className="text-sm text-gray-700">
-                  Googleカレンダーに同期（未実装）
+                <span className="text-sm text-gray-700 font-medium">
+                  Googleカレンダーに同期
                 </span>
               </label>
-              <p className="text-xs text-gray-500 mt-2">
-                ※ カレンダー同期機能は後のフェーズで実装予定です
+              <p className="text-xs text-gray-600 mt-2">
+                {calendarInitialized ? (
+                  <>
+                    ✅ 予定をGoogleカレンダーに自動追加します
+                    <br />
+                    📅 1時間前と1日前にリマインダーが設定されます
+                  </>
+                ) : (
+                  '⏳ Google Calendar APIを初期化中...'
+                )}
               </p>
             </div>
 

@@ -19,14 +19,49 @@ export interface Company {
 }
 
 /**
- * 企業分析結果
+ * 企業分析結果（改訂版）
  */
 export interface CompanyAnalysis {
-  businessOverview: string;
-  strengths: string[];
-  recentNews: string;
-  industryPosition: string;
-  recruitmentInsights: string;
+  corporateProfile: CorporateProfile;
+  marketAnalysis: MarketAnalysis;
+  futureDirection: FutureDirection;
+  workEnvironment: WorkEnvironment;
+}
+
+/**
+ * I. 企業概要
+ */
+export interface CorporateProfile {
+  mission: string;          // 100文字以内
+  businessSummary: string;  // 200文字以内
+}
+
+/**
+ * II. 企業の強みと市場環境
+ */
+export interface MarketAnalysis {
+  industry: string;          // 業界名（1単語）
+  strengths: string[];       // 3〜5つのキーワード
+  weaknesses: string[];      // 2〜3つのキーワード
+  industryPosition: string;  // 100文字以内
+  competitors: string[];     // 2〜3社
+}
+
+/**
+ * III. 将来の方向性
+ */
+export interface FutureDirection {
+  recentTrends: string;      // 200文字以内
+  growthPotential: string;   // 200文字以内
+}
+
+/**
+ * IV. 働く環境と文化
+ */
+export interface WorkEnvironment {
+  corporateCulture: string;  // 200文字以内
+  careerPath: string;        // 200文字以内
+  hiringInfo: string;        // 150文字以内
 }
 
 /**

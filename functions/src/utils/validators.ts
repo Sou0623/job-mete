@@ -5,8 +5,8 @@
 /**
  * 企業名のバリデーション
  *
- * @param companyName - 企業名
- * @returns バリデーション結果
+ * @param {string} companyName - 企業名
+ * @return {{valid: boolean, error: string}} バリデーション結果
  */
 export function validateCompanyName(companyName: string): {
   valid: boolean;

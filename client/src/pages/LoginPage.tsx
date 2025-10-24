@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 // アイコンコンポーネント
 const Icons = {
-  Sparkles: (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m12 3-1.9 4.2-4.3.6 3.1 3- .7 4.2 3.8-2 3.8 2-.7-4.2 3.1-3-4.3-.6L12 3z" /><path d="M5 21v-1" /><path d="M19 21v-1" /><path d="m3.2 14.8.8-.6" /><path d="m20 14.2-.8.6" /><path d="m20.8 7.2-.8-.6" /><path d="m3.2 9.2.8.6" /><path d="M12 21v-1" /></svg>),
+  Sparkles: (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" /></svg>),
   ClipboardList: (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M12 11h4" /><path d="M12 16h4" /><path d="M8 11h.01" /><path d="M8 16h.01" /></svg>),
   Target: (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>),
   ArrowRight: (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>),
@@ -52,8 +52,8 @@ export default function LoginPage() {
 
   if (isAuthLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-sky-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600"></div>
+      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#1A447210' }}>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#1A4472' }}></div>
       </div>
     );
   }
@@ -62,8 +62,15 @@ export default function LoginPage() {
     <div className="bg-white text-slate-800 font-sans">
       <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md shadow-sm z-50">
         <div className="container mx-auto px-6 py-3 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-sky-600">Job Mete</h1>
-          <button onClick={handleLogin} disabled={isLoginProcessing} className="bg-sky-500 text-white font-bold py-2 px-5 rounded-lg hover:bg-sky-600 transition-colors disabled:bg-sky-300">
+          <div className="flex items-center gap-3">
+            <div className="bg-[#1A4472] text-white rounded-lg p-2 shadow-sm">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-[#1A4472]">Job Mete</h1>
+          </div>
+          <button onClick={handleLogin} disabled={isLoginProcessing} className="text-white font-bold py-2 px-5 rounded-lg transition-colors disabled:opacity-50" style={{ backgroundColor: '#1A4472' }}>
             {isLoginProcessing ? '...' : 'ログイン / 新規登録'}
           </button>
         </div>
@@ -71,43 +78,41 @@ export default function LoginPage() {
 
       <main>
         {/* 1. アプリの概要 (Hero) */}
-        <section className="pt-36 pb-24 text-center bg-gradient-to-b from-sky-50 to-white">
+        <section className="pt-36 pb-24 text-center" style={{ background: 'linear-gradient(to bottom, #1A447210, white)' }}>
           <div className="container mx-auto px-6">
             <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">
-              その就活、<span className="text-sky-600">もっと賢く、もっと自分らしく。</span>
+              その就活、<span style={{ color: '#1A4472' }}>もっと賢く、もっと自分らしく。</span>
             </h2>
             <p className="mt-6 text-lg text-slate-600 max-w-2xl mx-auto">
               Job Meteは、AIがあなたの就活パートナーになるアプリです。<br />
               散らばる情報を一つにまとめ、あなたの「本当の強み」を見つけ出します。
             </p>
-            {/* ▼▼▼ ここを修正しました ▼▼▼ */}
             <div className="mt-12 flex flex-col items-center">
               <CallToActionButton onClick={handleLogin} isProcessing={isLoginProcessing} />
               {error && <p className="mt-4 text-red-600 text-sm">{error}</p>}
               <p className="text-sm text-slate-500 mt-4">※ Googleアカウントで簡単にはじめられます</p>
             </div>
-            {/* ▲▲▲ ここまで修正 ▲▲▲ */}
           </div>
         </section>
 
         {/* 2. 現状の課題 (共感) */}
         <section className="py-20 px-6 bg-slate-50">
           <div className="container mx-auto text-center max-w-4xl">
-            <h3 className="text-3xl font-bold text-slate-800 mb-4 animate-fade-in">「なんで就活って、こんなに大変なんだろう？」</h3>
-            <p className="text-lg text-slate-600 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <h3 className="text-3xl font-bold text-slate-800 mb-4">「なんで就活って、こんなに大変なんだろう？」</h3>
+            <p className="text-lg text-slate-600">
               心からそう思ったことはありませんか？<br/>
               本来は自分の未来を考える大切な時間なのに、現実は...
             </p>
             <div className="grid md:grid-cols-3 gap-8 mt-12 text-left">
-                <div className="bg-white p-6 rounded-lg border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+                <div className="bg-white p-6 rounded-lg border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                     <h4 className="font-bold text-lg text-slate-700">情報整理に追われる日々</h4>
                     <p className="mt-2 text-slate-500">企業の資料、面接のメモ、選考スケジュール...。気づけば情報がバラバラで、本当に大切なことを見失いがち。</p>
                 </div>
-                <div className="bg-white p-6 rounded-lg border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 animate-fade-in" style={{ animationDelay: '0.6s' }}>
+                <div className="bg-white p-6 rounded-lg border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                     <h4 className="font-bold text-lg text-slate-700">終わらない企業研究</h4>
                     <p className="mt-2 text-slate-500">何社も企業サイトを巡り、ニュースを検索する作業。もっと効率よく、企業の「本質」だけを知りたい。</p>
                 </div>
-                <div className="bg-white p-6 rounded-lg border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 animate-fade-in" style={{ animationDelay: '0.8s' }}>
+                <div className="bg-white p-6 rounded-lg border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                     <h4 className="font-bold text-lg text-slate-700">見失いがちな「自分の軸」</h4>
                     <p className="mt-2 text-slate-500">多くの情報に触れすぎて、「自分は何がしたいんだっけ？」と不安になる。ESや面接で、自信を持って話せない。</p>
                 </div>
@@ -153,10 +158,10 @@ export default function LoginPage() {
         </section>
 
         {/* 4. 理想の状態 (未来の提示) */}
-        <section className="py-20 px-6 bg-sky-600 text-white">
+        <section className="py-20 px-6 text-white" style={{ backgroundColor: '#1A4472' }}>
           <div className="container mx-auto text-center max-w-3xl">
             <h3 className="text-3xl font-bold mb-6">Job Meteと始める、新しい就活。</h3>
-            <p className="text-lg text-sky-100 leading-relaxed">
+            <p className="text-lg text-white/80 leading-relaxed">
               もう、情報整理に悩まない。スケジュール管理に追われない。<br/>
               創り出した時間で、もっと自分と向き合い、未来について語り合おう。<br/>
               Job Meteは、あなたが自信を持ってキャリアの第一歩を踏み出す、その瞬間まで伴走します。
@@ -164,7 +169,7 @@ export default function LoginPage() {
             <div className="mt-12 flex flex-col items-center">
               <CallToActionButton onClick={handleLogin} isProcessing={isLoginProcessing} />
               {error && <p className="mt-4 text-red-300 text-sm">{error}</p>}
-               <p className="text-sm text-sky-200 mt-4">※ 登録は無料です。いつでも利用をやめられます。</p>
+               <p className="text-sm text-white/70 mt-4">※ 登録は無料です。いつでも利用をやめられます。</p>
             </div>
           </div>
         </section>
@@ -178,3 +183,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

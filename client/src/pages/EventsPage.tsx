@@ -6,10 +6,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEvents } from '@/hooks/useEvents';
+
 import Header from '@/components/layout/Header';
+import UserModal from '@/components/common/UserModal';
 import Loading from '@/components/common/Loading';
 import ErrorMessage from '@/components/common/ErrorMessage';
-import UserModal from '@/components/common/UserModal';
 import type { Status } from '@/types/event';
 
 export default function EventsPage() {
@@ -52,14 +53,14 @@ export default function EventsPage() {
    */
   const getEventTypeBadgeColor = (eventType: string) => {
     const colors: { [key: string]: string } = {
-      '説明会': 'bg-blue-100 text-blue-800 border-blue-200',
-      '一次面接': 'bg-green-100 text-green-800 border-green-200',
-      '二次面接': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      '最終面接': 'bg-red-100 text-red-800 border-red-200',
-      'インターン': 'bg-purple-100 text-purple-800 border-purple-200',
-      'カジュアル面談': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      '説明会': 'bg-blue-100 text-[#1A4472] border-blue-300',
+      '一次面接': 'bg-green-100 text-[#2E7D4D] border-green-300',
+      '二次面接': 'bg-yellow-100 text-[#9B8E00] border-yellow-300',
+      '最終面接': 'bg-red-100 text-red-800 border-red-300',
+      'インターン': 'bg-purple-100 text-purple-800 border-purple-300',
+      'カジュアル面談': 'bg-indigo-100 text-indigo-800 border-indigo-300',
     };
-    return colors[eventType] || 'bg-gray-100 text-gray-800 border-gray-200';
+    return colors[eventType] || 'bg-gray-100 text-gray-700 border-gray-300';
   };
 
   /**
@@ -154,7 +155,7 @@ export default function EventsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gray-50">
       <Header onUserIconClick={() => setShowUserModal(true)} />
 
       {/* メインコンテンツ */}
@@ -162,28 +163,28 @@ export default function EventsPage() {
         {/* ページタイトル・アクション */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
           <div>
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <h2 className="text-4xl font-bold text-[#1A4472]">
               予定管理
             </h2>
             <div className="flex items-center gap-4 mt-2">
               <p className="text-sm text-gray-600">
-                登録予定数: <span className="font-bold text-blue-600">{events.length}</span>件
+                登録予定数: <span className="font-bold text-[#1A4472]">{events.length}</span>件
               </p>
               <div className="h-4 w-px bg-gray-300"></div>
               <p className="text-sm text-gray-600">
-                今後の予定: <span className="font-bold text-green-600">{events.filter(e => new Date(e.date) >= new Date()).length}</span>件
+                今後の予定: <span className="font-bold text-[#47845E]">{events.filter(e => new Date(e.date) >= new Date()).length}</span>件
               </p>
             </div>
           </div>
 
           <button
             onClick={handleAddEvent}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 font-medium flex items-center gap-2"
+            className="bg-[#1A4472] text-white px-6 py-3 rounded-xl hover:bg-[#47845E] transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 font-medium flex items-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            予定を追加
+            予定を登録
           </button>
         </div>
 
@@ -198,7 +199,7 @@ export default function EventsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <h3 className="text-2xl font-bold text-[#1A4472]">
               {currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月
             </h3>
             <button
@@ -211,7 +212,7 @@ export default function EventsPage() {
             </button>
             <button
               onClick={goToToday}
-              className="text-sm bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-600 px-4 py-2 rounded-lg hover:from-blue-200 hover:to-indigo-200 transition-all font-medium shadow-sm"
+              className="text-sm bg-blue-50 text-[#1A4472] px-4 py-2 rounded-lg hover:bg-blue-100 transition-all font-medium shadow-sm border border-blue-200"
             >
               今日
             </button>
@@ -221,12 +222,12 @@ export default function EventsPage() {
         {/* ビュー切り替えとフィルタ */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           {/* ビュー切り替え */}
-          <div className="flex items-center bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
+          <div className="flex items-center bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setViewMode('calendar')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                 viewMode === 'calendar'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                  ? 'bg-[#1A4472] text-white shadow-md'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -239,9 +240,9 @@ export default function EventsPage() {
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                 viewMode === 'list'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                  ? 'bg-[#1A4472] text-white shadow-md'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -258,40 +259,40 @@ export default function EventsPage() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setStatusFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 statusFilter === 'all'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                  ? 'bg-[#1A4472] text-white shadow-md'
+                  : 'bg-white text-gray-700 hover:border-[#1A4472] hover:text-[#1A4472] border border-gray-200'
               }`}
             >
               すべて ({events.length})
             </button>
             <button
               onClick={() => setStatusFilter('scheduled')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 statusFilter === 'scheduled'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                  ? 'bg-[#47845E] text-white shadow-md'
+                  : 'bg-white text-gray-700 hover:border-[#47845E] hover:text-[#47845E] border border-gray-200'
               }`}
             >
               予定 ({events.filter((e) => e.status === 'scheduled').length})
             </button>
             <button
               onClick={() => setStatusFilter('completed')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 statusFilter === 'completed'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                  ? 'bg-[#64B5F6] text-white shadow-md'
+                  : 'bg-white text-gray-700 hover:border-[#64B5F6] hover:text-[#64B5F6] border border-gray-200'
               }`}
             >
               完了 ({events.filter((e) => e.status === 'completed').length})
             </button>
             <button
               onClick={() => setStatusFilter('cancelled')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 statusFilter === 'cancelled'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                  ? 'bg-[#E57373] text-white shadow-md'
+                  : 'bg-white text-gray-700 hover:border-[#E57373] hover:text-[#E57373] border border-gray-200'
               }`}
             >
               キャンセル ({events.filter((e) => e.status === 'cancelled').length})
@@ -335,16 +336,16 @@ export default function EventsPage() {
                     {statusFilter !== 'all' && (
                       <button
                         onClick={() => setStatusFilter('all')}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors border border-blue-200"
+                        className="text-[#1A4472] hover:text-[#47845E] text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors border border-blue-200"
                       >
                         フィルタをクリア
                       </button>
                     )}
                     <button
                       onClick={handleAddEvent}
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium shadow-lg hover:shadow-xl"
+                      className="bg-[#1A4472] text-white px-6 py-2 rounded-lg hover:bg-[#47845E] transition-all font-medium shadow-lg hover:shadow-xl"
                     >
-                      予定を追加
+                      予定を登録
                     </button>
                   </div>
                 </div>
@@ -363,12 +364,12 @@ export default function EventsPage() {
                           <span className={`text-xs px-3 py-1 rounded-full font-medium border ${getEventTypeBadgeColor(event.eventType)}`}>
                             {event.eventType}
                           </span>
-                          <span className={`text-xs px-2 py-1 rounded-md font-medium ${
+                          <span className={`text-xs px-2 py-1 rounded-md font-medium border ${
                             event.status === 'scheduled'
-                              ? 'bg-green-50 text-green-700'
+                              ? 'bg-blue-100 text-[#1A4472] border-blue-300'
                               : event.status === 'completed'
-                              ? 'bg-blue-50 text-blue-700'
-                              : 'bg-red-50 text-red-700'
+                              ? 'bg-green-100 text-[#2E7D4D] border-green-300'
+                              : 'bg-gray-100 text-gray-800 border-gray-300'
                           }`}>
                             {event.status === 'scheduled' ? '予定' : event.status === 'completed' ? '完了' : 'キャンセル'}
                           </span>
@@ -428,7 +429,7 @@ export default function EventsPage() {
                         className={`min-h-[120px] p-3 rounded-xl border-2 transition-all ${
                           day.isCurrentMonth
                             ? isTodayDate
-                              ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-400 shadow-md'
+                              ? 'bg-blue-50 border-[#1A4472] shadow-md'
                               : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-md'
                             : 'bg-gray-50 border-gray-100'
                         } ${dayEvents.length > 0 ? 'cursor-pointer hover:scale-105' : ''}`}
@@ -442,7 +443,7 @@ export default function EventsPage() {
                           className={`text-sm font-bold mb-2 ${
                             day.isCurrentMonth
                               ? isTodayDate
-                                ? 'text-blue-600 text-lg'
+                                ? 'text-[#1A4472] text-lg'
                                 : 'text-gray-900'
                               : 'text-gray-400'
                           }`}

@@ -11,10 +11,12 @@ import { httpsCallable } from 'firebase/functions';
 import { FirebaseError } from 'firebase/app';
 import { db, functions } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import Header from '@/components/layout/Header';
+import UserModal from '@/components/common/UserModal';
 import type { Company } from '@/types/company';
 
 export default function CompanyFormPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [companyName, setCompanyName] = useState('');
@@ -22,17 +24,7 @@ export default function CompanyFormPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [duplicateCompany, setDuplicateCompany] = useState<Company | null>(null);
-
-  /**
-   * ログアウト処理
-   */
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('ログアウトエラー:', error);
-    }
-  };
+  const [showUserModal, setShowUserModal] = useState(false);
 
   /**
    * 企業名を正規化
@@ -152,34 +144,8 @@ export default function CompanyFormPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* ヘッダー */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <h1 className="text-xl font-bold text-blue-600">Job Mete</h1>
-
-          <div className="flex items-center gap-4">
-            {user && (
-              <>
-                {user.photoURL && (
-                  <img
-                    src={user.photoURL}
-                    alt={user.displayName || 'ユーザー'}
-                    className="w-8 h-8 rounded-full"
-                  />
-                )}
-                <span className="text-sm font-medium">{user.displayName}</span>
-                <button
-                  onClick={handleLogout}
-                  className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md hover:bg-gray-100"
-                >
-                  ログアウト
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-50">
+      <Header onUserIconClick={() => setShowUserModal(true)} />
 
       {/* メインコンテンツ */}
       <main className="max-w-2xl mx-auto px-4 py-8">
@@ -201,7 +167,7 @@ export default function CompanyFormPage() {
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="例: 株式会社コドモン"
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4472] focus:border-transparent shadow-sm"
                 disabled={isSubmitting}
               />
               {isChecking && (
@@ -213,32 +179,32 @@ export default function CompanyFormPage() {
 
             {/* エラーメッセージ */}
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-800 text-sm">{error}</p>
+              <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                <p className="text-[#E57373] text-sm font-medium">{error}</p>
               </div>
             )}
 
             {/* 重複警告 */}
             {duplicateCompany && (
-              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                <h4 className="font-semibold text-yellow-800 mb-2">
+              <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-2">
                   ⚠️ この企業は既に登録されています
                 </h4>
-                <p className="text-yellow-700 text-sm mb-3">
+                <p className="text-gray-700 text-sm mb-3">
                   {duplicateCompany.companyName}
                 </p>
                 <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={handleViewExisting}
-                    className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 text-sm font-medium"
+                    className="bg-[#FFB74D] text-white px-4 py-2 rounded-lg hover:bg-[#FFA726] text-sm font-medium shadow-sm"
                   >
                     既存企業を見る
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 text-sm font-medium disabled:bg-gray-400"
+                    className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium disabled:bg-gray-400 shadow-sm"
                   >
                     それでも新規登録
                   </button>
@@ -252,7 +218,7 @@ export default function CompanyFormPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting || !companyName.trim()}
-                  className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 disabled:bg-gray-400 font-medium"
+                  className="flex-1 bg-[#1A4472] text-white px-6 py-3 rounded-lg hover:bg-[#47845E] disabled:bg-gray-400 font-medium shadow-sm transition-colors"
                 >
                   {isSubmitting ? 'AI分析中...' : '企業を登録'}
                 </button>
@@ -260,7 +226,7 @@ export default function CompanyFormPage() {
                   type="button"
                   onClick={handleCancel}
                   disabled={isSubmitting}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium"
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
                 >
                   キャンセル
                 </button>
@@ -269,14 +235,17 @@ export default function CompanyFormPage() {
           </form>
 
           {/* 注意事項 */}
-          <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <p className="text-blue-800 text-sm">
+          <div className="mt-8 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+            <p className="text-[#1A4472] text-sm">
               <strong>💡 Gemini AI分析:</strong> 企業登録時に、Gemini AIが自動的に企業情報を分析します。
               分析には数秒かかる場合があります。
             </p>
           </div>
         </div>
       </main>
+
+      {/* ユーザー設定モーダル */}
+      <UserModal isOpen={showUserModal} onClose={() => setShowUserModal(false)} />
     </div>
   );
 }

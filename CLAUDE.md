@@ -175,7 +175,7 @@ import clsx from 'clsx';
 #### 変数・関数
 ```typescript
 // ✅ 推奨：意味のある名前
-const companyName = '株式会社コドモン';
+const companyName = '株式会社〇〇';
 const isLoading = false;
 const hasError = true;
 

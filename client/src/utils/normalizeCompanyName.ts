@@ -7,12 +7,12 @@
  * - スペースを除去
  * - 記号（句点、読点、ピリオド、中黒）を除去
  *
- * @param name - 企業名（例: "株式会社コドモン"）
- * @returns 正規化された企業名（例: "コドモン"）
+ * @param name - 企業名（例: "株式会社〇〇"）
+ * @returns 正規化された企業名（例: "〇〇"）
  *
  * @example
- * normalizeCompanyName("株式会社コドモン") // => "コドモン"
- * normalizeCompanyName("㈱メルカリ・ジャパン") // => "メルカリジャパン"
+ * normalizeCompanyName("株式会社〇〇") // => "〇〇"
+ * normalizeCompanyName("㈱△△・ジャパン") // => "△△ジャパン"
  */
 export function normalizeCompanyName(name: string): string {
   return name

@@ -159,8 +159,8 @@ const userId = context.auth.uid;
 import { httpsCallable } from 'firebase/functions';
 
 const createCompany = httpsCallable(functions, 'createCompany');
-const result = await createCompany({ 
-  companyName: '株式会社コドモン' 
+const result = await createCompany({
+  companyName: '株式会社〇〇'
 });
 
 if (result.data.success) {
@@ -289,7 +289,7 @@ console.log('削除された予定数:', result.data.deletedEventCount);
 ```typescript
 const createEvent = httpsCallable(functions, 'createEvent');
 const result = await createEvent({
-  companyName: '株式会社コドモン',
+  companyName: '株式会社〇〇',
   eventType: '一次面接',
   date: '2025-10-15T13:00:00+09:00',
   endDate: '2025-10-15T14:00:00+09:00',
@@ -685,13 +685,13 @@ describe('createCompany', () => {
 describe('予定登録フロー', () => {
   it('企業登録 → 予定登録 → Calendar同期が正常に動作する', async () => {
     // 1. 企業登録
-    const companyResult = await createCompany({ 
-      companyName: '株式会社テスト' 
+    const companyResult = await createCompany({
+      companyName: '株式会社〇〇'
     });
     
     // 2. 予定登録
     const eventResult = await createEvent({
-      companyName: '株式会社テスト',
+      companyName: '株式会社〇〇',
       eventType: '一次面接',
       date: '2025-10-15T13:00:00+09:00',
       endDate: '2025-10-15T14:00:00+09:00'

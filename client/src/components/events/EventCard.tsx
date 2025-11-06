@@ -68,62 +68,71 @@ export default function EventCard({ event }: EventCardProps) {
   return (
     <div
       onClick={handleClick}
-      className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow"
+      className="bg-white rounded-lg shadow-md p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-shadow"
     >
       {/* ヘッダー: ステータスバッジ */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 gap-2">
         <span
-          className={`px-3 py-1 rounded-full text-xs font-semibold ${statusConfig.className}`}
+          className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${statusConfig.className}`}
         >
           {statusConfig.label}
         </span>
 
         {/* カレンダー同期ステータス */}
         {event.googleCalendar && event.googleCalendar.syncStatus === 'synced' && (
-          <span className="text-xs text-gray-500">📅 同期済み</span>
+          <span className="text-xs text-gray-500 flex-shrink-0">
+            <span className="hidden sm:inline">📅 同期済み</span>
+            <span className="sm:hidden">📅</span>
+          </span>
         )}
         {event.googleCalendar && event.googleCalendar.syncStatus === 'pending' && (
-          <span className="text-xs text-yellow-600">📅 同期中</span>
+          <span className="text-xs text-yellow-600 flex-shrink-0">
+            <span className="hidden sm:inline">📅 同期中</span>
+            <span className="sm:hidden">📅</span>
+          </span>
         )}
         {event.googleCalendar && event.googleCalendar.syncStatus === 'failed' && (
-          <span className="text-xs text-red-600">📅 同期失敗</span>
+          <span className="text-xs text-red-600 flex-shrink-0">
+            <span className="hidden sm:inline">📅 同期失敗</span>
+            <span className="sm:hidden">📅❌</span>
+          </span>
         )}
       </div>
 
       {/* 企業名 */}
-      <h3 className="text-xl font-bold text-gray-900 mb-2">{event.companyName}</h3>
+      <h3 className="text-base sm:text-xl font-bold text-gray-900 mb-2 truncate">{event.companyName}</h3>
 
       {/* イベント種別 */}
-      <p className="text-lg text-gray-700 mb-3">
+      <p className="text-sm sm:text-lg text-gray-700 mb-3">
         {EVENT_TYPE_LABELS[event.eventType] || event.eventType}
       </p>
 
       {/* 日時 */}
-      <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-        <span>📅</span>
-        <span>{formatDateTime(event.date)}</span>
+      <div className="flex items-start gap-2 text-xs sm:text-sm text-gray-600 mb-2">
+        <span className="flex-shrink-0">📅</span>
+        <span className="break-words">{formatDateTime(event.date)}</span>
       </div>
 
       {/* 場所 */}
       {event.location && (
-        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-          <span>📍</span>
-          <span>{event.location}</span>
+        <div className="flex items-start gap-2 text-xs sm:text-sm text-gray-600 mb-2">
+          <span className="flex-shrink-0">📍</span>
+          <span className="break-words">{event.location}</span>
         </div>
       )}
 
       {/* 結果 */}
       {event.result && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <span className="text-sm font-semibold text-gray-700">結果: </span>
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
+          <span className="text-xs sm:text-sm font-semibold text-gray-700">結果: </span>
           {event.result === 'passed' && (
-            <span className="text-sm text-green-600 font-semibold">✅ 通過</span>
+            <span className="text-xs sm:text-sm text-green-600 font-semibold">✅ 通過</span>
           )}
           {event.result === 'failed' && (
-            <span className="text-sm text-red-600 font-semibold">❌ 不合格</span>
+            <span className="text-xs sm:text-sm text-red-600 font-semibold">❌ 不合格</span>
           )}
           {event.result === 'waiting' && (
-            <span className="text-sm text-yellow-600 font-semibold">⏳ 結果待ち</span>
+            <span className="text-xs sm:text-sm text-yellow-600 font-semibold">⏳ 結果待ち</span>
           )}
         </div>
       )}

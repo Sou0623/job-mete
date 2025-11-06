@@ -174,12 +174,11 @@ Firestore Root
 
 ```json
 {
-  "companyName": "株式会社コドモン",
-  "normalizedName": "こどもん",
+  "companyName": "株式会社〇〇",
+  "normalizedName": "〇〇",
   "companyNameVariations": [
-    "株式会社コドモン",
-    "コドモン",
-    "CODMON"
+    "株式会社〇〇",
+    "〇〇"
   ],
   "analysis": {
     "businessOverview": "保育園・幼稚園向けICTシステムを開発・提供するSaaS企業。保育現場のDXを推進。",
@@ -289,7 +288,7 @@ companies.stats.eventCount (DESC) + companies.createdAt (DESC)
 ```json
 {
   "companyId": "company_abc123",
-  "companyName": "株式会社コドモン",
+  "companyName": "株式会社〇〇",
   "eventType": "一次面接",
   "date": "2025-10-15T13:00:00+09:00",
   "endDate": "2025-10-15T14:00:00+09:00",
@@ -404,7 +403,7 @@ Array<{
   "sourceCompanies": [
     {
       "companyId": "company_abc123",
-      "companyName": "株式会社コドモン"
+      "companyName": "株式会社〇〇"
     },
     {
       "companyId": "company_def456",

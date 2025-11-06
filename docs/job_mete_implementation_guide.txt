@@ -321,13 +321,13 @@ function getFirebaseErrorMessage(code: string): string {
 ```typescript
 /**
  * 企業名を正規化して重複チェック用の文字列を生成
- * 
- * @param name - 企業名（例: "株式会社コドモン"）
- * @returns 正規化された企業名（例: "こどもん"）
- * 
+ *
+ * @param name - 企業名（例: "株式会社〇〇"）
+ * @returns 正規化された企業名（例: "〇〇"）
+ *
  * @example
- * normalizeCompanyName("株式会社コドモン") // => "こどもん"
- * normalizeCompanyName("コドモン") // => "こどもん"
+ * normalizeCompanyName("株式会社〇〇") // => "〇〇"
+ * normalizeCompanyName("㈱△△・ジャパン") // => "△△ジャパン"
  */
 export function normalizeCompanyName(name: string): string {
   return name
@@ -992,7 +992,7 @@ const styles = {
 
 ```typescript
 // ✅ 良い例：意味のある名前
-const companyName = '株式会社コドモン';
+const companyName = '株式会社〇〇';
 const isLoading = false;
 const hasError = true;
 const userList = [];
@@ -1108,7 +1108,7 @@ import { normalizeCompanyName } from '../normalizeCompanyName';
 
 describe('normalizeCompanyName', () => {
   it('株式会社を除去する', () => {
-    expect(normalizeCompanyName('株式会社コドモン')).toBe('こどもん');
+    expect(normalizeCompanyName('株式会社〇〇')).toBe('〇〇');
   });
   
   it('大文字を小文字に変換する', () => {
@@ -1135,14 +1135,14 @@ import CompanyCard from '../CompanyCard';
 
 const mockCompany = {
   id: 'company_123',
-  companyName: '株式会社コドモン',
+  companyName: '株式会社〇〇',
   // ... 他のプロパティ
 };
 
 describe('CompanyCard', () => {
   it('企業名が表示される', () => {
     render(<CompanyCard company={mockCompany} onDetail={() => {}} />);
-    expect(screen.getByText('株式会社コドモン')).toBeInTheDocument();
+    expect(screen.getByText('株式会社〇〇')).toBeInTheDocument();
   });
   
   it('詳細ボタンをクリックするとonDetailが呼ばれる', () => {

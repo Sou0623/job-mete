@@ -148,16 +148,16 @@ export default function CompanyFormPage() {
       <Header onUserIconClick={() => setShowUserModal(true)} />
 
       {/* メインコンテンツ */}
-      <main className="max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">企業を追加</h2>
+      <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">企業を追加</h2>
 
           <form onSubmit={handleSubmit}>
             {/* 企業名入力 */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <label
                 htmlFor="companyName"
-                className="block text-sm font-semibold text-gray-700 mb-2"
+                className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2"
               >
                 企業名 <span className="text-red-500">*</span>
               </label>
@@ -166,12 +166,12 @@ export default function CompanyFormPage() {
                 id="companyName"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="例: 株式会社コドモン"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4472] focus:border-transparent shadow-sm"
+                placeholder="例: 株式会社〇〇"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A4472] focus:border-transparent shadow-sm text-sm sm:text-base"
                 disabled={isSubmitting}
               />
               {isChecking && (
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-xs sm:text-sm text-gray-500 mt-2">
                   重複チェック中...
                 </p>
               )}
@@ -179,32 +179,32 @@ export default function CompanyFormPage() {
 
             {/* エラーメッセージ */}
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
-                <p className="text-[#E57373] text-sm font-medium">{error}</p>
+              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                <p className="text-[#E57373] text-xs sm:text-sm font-medium">{error}</p>
               </div>
             )}
 
             {/* 重複警告 */}
             {duplicateCompany && (
-              <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
-                <h4 className="font-semibold text-gray-900 mb-2">
+              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">
                   ⚠️ この企業は既に登録されています
                 </h4>
-                <p className="text-gray-700 text-sm mb-3">
+                <p className="text-gray-700 text-xs sm:text-sm mb-3">
                   {duplicateCompany.companyName}
                 </p>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <button
                     type="button"
                     onClick={handleViewExisting}
-                    className="bg-[#FFB74D] text-white px-4 py-2 rounded-lg hover:bg-[#FFA726] text-sm font-medium shadow-sm"
+                    className="bg-[#FFB74D] text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-[#FFA726] text-xs sm:text-sm font-medium shadow-sm"
                   >
                     既存企業を見る
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium disabled:bg-gray-400 shadow-sm"
+                    className="bg-gray-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-700 text-xs sm:text-sm font-medium disabled:bg-gray-400 shadow-sm"
                   >
                     それでも新規登録
                   </button>
@@ -214,11 +214,11 @@ export default function CompanyFormPage() {
 
             {/* アクションボタン */}
             {!duplicateCompany && (
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <button
                   type="submit"
                   disabled={isSubmitting || !companyName.trim()}
-                  className="flex-1 bg-[#1A4472] text-white px-6 py-3 rounded-lg hover:bg-[#47845E] disabled:bg-gray-400 font-medium shadow-sm transition-colors"
+                  className="flex-1 bg-[#1A4472] text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-[#47845E] disabled:bg-gray-400 font-medium shadow-sm transition-colors text-sm sm:text-base"
                 >
                   {isSubmitting ? 'AI分析中...' : '企業を登録'}
                 </button>
@@ -226,7 +226,7 @@ export default function CompanyFormPage() {
                   type="button"
                   onClick={handleCancel}
                   disabled={isSubmitting}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+                  className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors text-sm sm:text-base"
                 >
                   キャンセル
                 </button>
@@ -235,8 +235,8 @@ export default function CompanyFormPage() {
           </form>
 
           {/* 注意事項 */}
-          <div className="mt-8 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
-            <p className="text-[#1A4472] text-sm">
+          <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+            <p className="text-[#1A4472] text-xs sm:text-sm">
               <strong>💡 Gemini AI分析:</strong> 企業登録時に、Gemini AIが自動的に企業情報を分析します。
               分析には数秒かかる場合があります。
             </p>

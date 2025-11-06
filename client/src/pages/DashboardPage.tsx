@@ -187,22 +187,22 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header onUserIconClick={() => setShowUserModal(true)} />
-     <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 lg:gap-8">
+     <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {/* メインカラム (中央) */}
-          <div className="lg:col-span-3 space-y-8">
+          <div className="lg:col-span-3 space-y-4 sm:space-y-6 lg:space-y-8">
             {/* ウェルカムメッセージ */}
             <section>
-              <h2 className="text-4xl font-bold text-[#1A4472]">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#1A4472]">
                 ようこそ、{user?.displayName} さん！
               </h2>
-              <div className="flex items-center gap-4 mt-2">
-                <p className="text-gray-600">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2">
+                <p className="text-sm sm:text-base text-gray-600">
                   まずは、今日やることを確認しましょう。
                 </p>
-                <div className="h-4 w-px bg-gray-300"></div>
-                <p className="text-xs text-gray-500 flex items-center gap-1">
-                  <svg className="w-4 h-4 text-[#1A4472]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="hidden sm:block h-4 w-px bg-gray-300"></div>
+                <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-1">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-[#1A4472]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   登録企業: {companies.length}社 | 予定: {events.length}件
@@ -211,41 +211,41 @@ export default function DashboardPage() {
             </section>
 
             {/* クイックアクションボタン（横並び） */}
-            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <button
                 onClick={() => navigate('/companies/new')}
-                className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-center group h-[200px] flex flex-col items-center justify-center border border-gray-200"
+                className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-center group h-[160px] sm:h-[200px] flex flex-col items-center justify-center border border-gray-200"
               >
-                <div className="bg-[#1A4472] text-white rounded-lg p-4 mx-auto w-16 h-16 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Icons.Building className="w-8 h-8" />
+                <div className="bg-[#1A4472] text-white rounded-lg p-3 sm:p-4 mx-auto w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
+                  <Icons.Building className="w-6 h-6 sm:w-8 sm:h-8" />
                 </div>
-                <h3 className="font-bold text-gray-900 mb-1 text-lg">企業を分析</h3>
-                <p className="text-sm text-gray-600">気になる企業を登録</p>
+                <h3 className="font-bold text-gray-900 mb-1 text-base sm:text-lg">企業を分析</h3>
+                <p className="text-xs sm:text-sm text-gray-600">気になる企業を登録</p>
               </button>
               <button
                 onClick={() => navigate('/events/new')}
-                className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-center group h-[200px] flex flex-col items-center justify-center border border-gray-200"
+                className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-center group h-[160px] sm:h-[200px] flex flex-col items-center justify-center border border-gray-200"
               >
-                <div className="bg-[#47845E] text-white rounded-lg p-4 mx-auto w-16 h-16 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Icons.Plus className="w-8 h-8" />
+                <div className="bg-[#47845E] text-white rounded-lg p-3 sm:p-4 mx-auto w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
+                  <Icons.Plus className="w-6 h-6 sm:w-8 sm:h-8" />
                 </div>
-                <h3 className="font-bold text-gray-900 mb-1 text-lg">予定を登録</h3>
-                <p className="text-sm text-gray-600">面接や説明会の予定</p>
+                <h3 className="font-bold text-gray-900 mb-1 text-base sm:text-lg">予定を登録</h3>
+                <p className="text-xs sm:text-sm text-gray-600">面接や説明会の予定</p>
               </button>
               <button
                 onClick={() => navigate('/trends')}
                 disabled={reviewedEventsCount < 3}
-                className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-center group h-[200px] flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg disabled:hover:translate-y-0 border border-gray-200"
+                className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-center group h-[160px] sm:h-[200px] flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg disabled:hover:translate-y-0 border border-gray-200"
               >
-                <div className={`rounded-lg p-4 mx-auto w-16 h-16 flex items-center justify-center mb-4 transition-transform text-white ${
+                <div className={`rounded-lg p-3 sm:p-4 mx-auto w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center mb-3 sm:mb-4 transition-transform text-white ${
                   reviewedEventsCount < 3
                     ? 'bg-gray-400'
                     : 'bg-[#1A4472] group-hover:scale-110'
                 }`}>
-                  <Icons.Chart className="w-8 h-8" />
+                  <Icons.Chart className="w-6 h-6 sm:w-8 sm:h-8" />
                 </div>
-                <h3 className="font-bold text-gray-900 mb-1 text-lg">傾向分析</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className="font-bold text-gray-900 mb-1 text-base sm:text-lg">傾向分析</h3>
+                <p className="text-xs sm:text-sm text-gray-600">
                   {reviewedEventsCount < 3 ? `レビュー済み ${reviewedEventsCount}/3 件` : 'AIが分析'}
                 </p>
               </button>
@@ -253,21 +253,21 @@ export default function DashboardPage() {
 
             {/* 過去の未完了予定セクション */}
             {incompleteEvents.length > 0 && (
-              <section className="bg-amber-50 p-6 rounded-2xl shadow-lg border-2 border-amber-200">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-[#E57373] text-white rounded-lg p-2">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <section className="bg-amber-50 p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-lg border-2 border-amber-200">
+                <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <div className="bg-[#E57373] text-white rounded-lg p-1.5 sm:p-2 flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900">レビュー未記入の予定</h3>
+                    <h3 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">レビュー未記入の予定</h3>
                   </div>
-                  <span className="bg-[#E57373] text-white px-3 py-1 rounded-full text-sm font-bold">
+                  <span className="bg-[#E57373] text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold flex-shrink-0">
                     {incompleteEvents.length}件
                   </span>
                 </div>
-                <p className="text-sm text-gray-700 mb-4">
+                <p className="text-xs sm:text-sm text-gray-700 mb-3 sm:mb-4">
                   完了した予定のレビュー（感想・マッチ度）を記入して、傾向分析の精度を上げましょう！
                 </p>
                 <div className="space-y-3">
@@ -307,33 +307,33 @@ export default function DashboardPage() {
             )}
 
             {/* 予定カレンダー */}
-            <section className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200">
+            <section className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-xl border border-gray-200">
               {/* 月ナビゲーションとビュー切り替え */}
-              <div className="flex items-center justify-between mb-6 relative">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-0 sm:relative">
                 {/* 左側：ビュー切り替えボタン */}
-                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <div className="flex items-center bg-gray-100 rounded-lg p-0.5 sm:p-1 w-full sm:w-auto">
                   <button
                     onClick={() => setViewMode('list')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                       viewMode === 'list'
                         ? 'bg-[#1A4472] text-white shadow-md'
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4 inline mr-0.5 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                     </svg>
                     リスト
                   </button>
                   <button
                     onClick={() => setViewMode('calendar')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                       viewMode === 'calendar'
                         ? 'bg-[#1A4472] text-white shadow-md'
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4 inline mr-0.5 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     カレンダー
@@ -341,23 +341,23 @@ export default function DashboardPage() {
                 </div>
 
                 {/* 中央：月ナビゲーション */}
-                <div className="flex items-center gap-3 absolute left-1/2 transform -translate-x-1/2">
+                <div className="flex items-center gap-2 sm:gap-3 sm:absolute sm:left-1/2 sm:transform sm:-translate-x-1/2 w-full sm:w-auto justify-center">
                   <button
                     onClick={goToPreviousMonth}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
                   >
-                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
-                  <h3 className="text-2xl font-bold text-[#1A4472] whitespace-nowrap">
+                  <h3 className="text-lg sm:text-2xl font-bold text-[#1A4472] whitespace-nowrap">
                     {currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月
                   </h3>
                   <button
                     onClick={goToNextMonth}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
                   >
-                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
@@ -366,7 +366,7 @@ export default function DashboardPage() {
                 {/* 右側：すべて見るボタン */}
                 <button
                   onClick={() => navigate('/events')}
-                  className="text-sm bg-[#1A4472] text-white px-4 py-2 rounded-lg hover:bg-[#47845E] transition-all font-semibold shadow-sm"
+                  className="text-xs sm:text-sm bg-[#1A4472] text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-[#47845E] transition-all font-semibold shadow-sm w-full sm:w-auto"
                 >
                   すべて見る →
                 </button>

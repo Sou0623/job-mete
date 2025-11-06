@@ -26,22 +26,22 @@ export default function Header({ onUserIconClick }: HeaderProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex items-center justify-between">
           {/* ロゴ */}
-          <Link to="/dashboard" className="flex items-center gap-3 group" aria-label="ホームに移動">
-            <div className="bg-[#1A4472] text-white rounded-lg p-2 group-hover:bg-[#47845E] transition-all shadow-sm">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <Link to="/dashboard" className="flex items-center gap-2 group" aria-label="ホームに移動">
+            <div className="bg-[#1A4472] text-white rounded-lg p-1.5 sm:p-2 group-hover:bg-[#47845E] transition-all shadow-sm">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-[#1A4472]">Job Mete</h1>
+            <h1 className="text-lg sm:text-2xl font-bold text-[#1A4472]">Job Mete</h1>
           </Link>
 
           {/* ナビゲーションメニュー */}
-          <nav className="flex items-center gap-1" aria-label="メインナビゲーション">
+          <nav className="flex items-center gap-0.5 sm:gap-1" aria-label="メインナビゲーション">
             <Link
               to="/dashboard"
               aria-label="ダッシュボード"
               aria-current={isActive('/dashboard') ? 'page' : undefined}
-              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+              className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1 sm:gap-2 ${
                 isActive('/dashboard')
                   ? 'bg-[#1A4472] text-white shadow-md'
                   : 'text-gray-600 hover:bg-blue-50 hover:text-[#1A4472]'
@@ -56,7 +56,7 @@ export default function Header({ onUserIconClick }: HeaderProps) {
               to="/companies"
               aria-label="企業一覧"
               aria-current={isActive('/companies') ? 'page' : undefined}
-              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+              className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1 sm:gap-2 ${
                 isActive('/companies')
                   ? 'bg-[#1A4472] text-white shadow-md'
                   : 'text-gray-600 hover:bg-blue-50 hover:text-[#1A4472]'
@@ -71,7 +71,7 @@ export default function Header({ onUserIconClick }: HeaderProps) {
               to="/events"
               aria-label="予定管理"
               aria-current={isActive('/events') ? 'page' : undefined}
-              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+              className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1 sm:gap-2 ${
                 isActive('/events')
                   ? 'bg-[#1A4472] text-white shadow-md'
                   : 'text-gray-600 hover:bg-blue-50 hover:text-[#1A4472]'
@@ -86,7 +86,7 @@ export default function Header({ onUserIconClick }: HeaderProps) {
               to="/trends"
               aria-label="傾向分析"
               aria-current={isActive('/trends') ? 'page' : undefined}
-              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+              className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1 sm:gap-2 ${
                 isActive('/trends')
                   ? 'bg-[#1A4472] text-white shadow-md'
                   : 'text-gray-600 hover:bg-blue-50 hover:text-[#1A4472]'
@@ -104,23 +104,23 @@ export default function Header({ onUserIconClick }: HeaderProps) {
             <button
               onClick={onUserIconClick}
               aria-label="ユーザー設定を開く"
-              className="relative group ml-2"
+              className="relative group ml-1 sm:ml-2"
             >
               {user.photoURL ? (
                 <img
                   src={user.photoURL}
                   alt={user.displayName || 'ユーザー'}
-                  className="w-10 h-10 rounded-full border-2 border-[#1A4472]/20 group-hover:border-[#1A4472] transition-all cursor-pointer shadow-sm"
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-[#1A4472]/20 group-hover:border-[#1A4472] transition-all cursor-pointer shadow-sm"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center border-2 border-[#1A4472]/20 group-hover:border-[#1A4472] group-hover:bg-blue-100 transition-all cursor-pointer shadow-sm">
-                  <span className="text-lg font-bold text-[#1A4472]">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 flex items-center justify-center border-2 border-[#1A4472]/20 group-hover:border-[#1A4472] group-hover:bg-blue-100 transition-all cursor-pointer shadow-sm">
+                  <span className="text-base sm:text-lg font-bold text-[#1A4472]">
                     {user.displayName?.charAt(0) || 'U'}
                   </span>
                 </div>
               )}
               {/* オンラインインジケーター */}
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#47845E] rounded-full border-2 border-white" aria-hidden="true"></div>
+              <div className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#47845E] rounded-full border-2 border-white" aria-hidden="true"></div>
             </button>
           )}
         </div>

@@ -189,9 +189,9 @@ export default function EventFormPage() {
       <Header />
 
       {/* メインコンテンツ */}
-      <main className="max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">予定を登録</h2>
+      <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">予定を登録</h2>
 
           <form onSubmit={handleSubmit}>
             {/* 企業名入力 */}
@@ -207,7 +207,7 @@ export default function EventFormPage() {
                 id="companyName"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="例: 株式会社コドモン"
+                placeholder="例: 株式会社〇〇"
                 className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isSubmitting}
                 required
@@ -392,11 +392,11 @@ export default function EventFormPage() {
             )}
 
             {/* アクションボタン */}
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <button
                 type="submit"
                 disabled={isSubmitting || !companyName.trim()}
-                className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 disabled:bg-gray-400 font-medium"
+                className="flex-1 bg-blue-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-md hover:bg-blue-700 disabled:bg-gray-400 font-medium text-sm sm:text-base"
               >
                 {isSubmitting ? 'AI分析中...' : '予定を登録'}
               </button>
@@ -404,7 +404,7 @@ export default function EventFormPage() {
                 type="button"
                 onClick={handleCancel}
                 disabled={isSubmitting}
-                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium"
+                className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium text-sm sm:text-base"
               >
                 キャンセル
               </button>

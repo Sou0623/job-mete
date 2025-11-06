@@ -68,18 +68,18 @@ export default function CompanyCard({ company }: CompanyCardProps) {
   return (
     <div
       onClick={handleClick}
-      className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border border-gray-200"
+      className="bg-white rounded-lg shadow-md p-4 sm:p-6 hover:shadow-lg transition-shadow cursor-pointer border border-gray-200"
     >
       {/* ヘッダー */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="text-xl font-bold text-gray-900 mb-1">
+      <div className="flex items-start justify-between mb-3 sm:mb-4">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-xl font-bold text-gray-900 mb-1 truncate">
             {company.companyName}
           </h3>
           {/* 業界バッジ */}
           {company.analysis.marketAnalysis?.industry && (
             <div className="mb-2">
-              <span className="inline-block bg-blue-100 text-[#1A4472] px-3 py-0.5 rounded-full text-xs font-medium border border-blue-300">
+              <span className="inline-block bg-blue-100 text-[#1A4472] px-2 sm:px-3 py-0.5 rounded-full text-xs font-medium border border-blue-300">
                 {company.analysis.marketAnalysis.industry}
               </span>
             </div>
@@ -88,7 +88,7 @@ export default function CompanyCard({ company }: CompanyCardProps) {
             const legacyAnalysis = company.analysis as LegacyCompanyAnalysis;
             const industryPosition = company.analysis.marketAnalysis?.industryPosition || legacyAnalysis.industryPosition;
             return industryPosition ? (
-              <p className="text-sm text-gray-600">
+              <p className="text-xs sm:text-sm text-gray-600 truncate">
                 {industryPosition.split('、')[0]}
               </p>
             ) : null;
@@ -97,7 +97,7 @@ export default function CompanyCard({ company }: CompanyCardProps) {
 
         {/* 再分析バッジ */}
         {needsReanalysis() && (
-          <span className="bg-yellow-100 text-[#9B8E00] text-xs font-medium px-2.5 py-0.5 rounded border border-yellow-300">
+          <span className="bg-yellow-100 text-[#9B8E00] text-xs font-medium px-2 sm:px-2.5 py-0.5 rounded border border-yellow-300 flex-shrink-0 ml-2">
             再分析推奨
           </span>
         )}
@@ -108,22 +108,23 @@ export default function CompanyCard({ company }: CompanyCardProps) {
         const legacyAnalysis = company.analysis as LegacyCompanyAnalysis;
         const businessSummary = company.analysis.corporateProfile?.businessSummary || legacyAnalysis.businessOverview;
         return businessSummary ? (
-          <p className="text-sm text-gray-700 mb-4 line-clamp-2">
+          <p className="text-xs sm:text-sm text-gray-700 mb-3 sm:mb-4 line-clamp-2">
             {businessSummary}
           </p>
         ) : null;
       })()}
 
       {/* 統計情報 */}
-      <div className="flex items-center gap-4 text-sm text-gray-600">
+      <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600">
         <div className="flex items-center gap-1">
           <span className="font-medium">予定:</span>
           <span>{company.stats.eventCount}件</span>
         </div>
 
         <div className="flex items-center gap-1">
-          <span className="font-medium">分析日:</span>
-          <span>{formatDate(company.analysisMetadata.analyzedAt)}</span>
+          <span className="font-medium hidden sm:inline">分析日:</span>
+          <span className="font-medium sm:hidden">分析:</span>
+          <span className="truncate">{formatDate(company.analysisMetadata.analyzedAt)}</span>
         </div>
       </div>
 
@@ -132,7 +133,7 @@ export default function CompanyCard({ company }: CompanyCardProps) {
         const legacyAnalysis = company.analysis as LegacyCompanyAnalysis;
         const strengths = company.analysis.marketAnalysis?.strengths || legacyAnalysis.strengths;
         return strengths && strengths.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2">
             {strengths.slice(0, 3).map((strength, index) => (
               <span
                 key={index}

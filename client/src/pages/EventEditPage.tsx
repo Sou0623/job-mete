@@ -104,7 +104,7 @@ export default function EventEditPage() {
 
       // 詳細ページにリダイレクト
       navigate(`/events/${eventId}`);
-    } catch (err: any) {
+    } catch (err) {
       console.error('予定更新エラー:', err);
       setError('予定の更新に失敗しました。もう一度お試しください。');
     } finally {

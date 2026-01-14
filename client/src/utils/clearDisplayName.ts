@@ -24,5 +24,6 @@ export async function clearDisplayName() {
   }
 }
 
-// グローバルに公開
+// グローバルに公開（開発環境でのデバッグ用）
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (window as any).clearDisplayName = clearDisplayName;

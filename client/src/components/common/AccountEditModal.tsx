@@ -1,22 +1,37 @@
 /**
- * プロフィール初期設定ページ
- * 初回ログイン時にユーザー情報を設定する画面
+ * アカウント情報編集モーダル
+ * ユーザーの表示名とプロフィール画像を編集
  */
 
 import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function ProfileSetupPage() {
-  const { user, updateUserProfile, markProfileSetupCompleted } = useAuth();
-  const navigate = useNavigate();
+interface AccountEditModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function AccountEditModal({ isOpen, onClose }: AccountEditModalProps) {
+  const { user, updateUserProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [photoPreview, setPhotoPreview] = useState<string | null>(user?.photoURL || null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  /**
+   * モーダルを閉じる
+   */
+  const handleClose = () => {
+    if (!isSaving) {
+      setError(null);
+      setSuccessMessage(null);
+      onClose();
+    }
+  };
 
   /**
    * 画像ファイル選択
@@ -56,19 +71,18 @@ export default function ProfileSetupPage() {
   };
 
   /**
-   * プロフィール設定を完了
+   * プロフィール保存
    */
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSave = async () => {
     if (!displayName.trim()) {
       setError('表示名を入力してください');
       return;
     }
 
     try {
-      setIsSubmitting(true);
+      setIsSaving(true);
       setError(null);
+      setSuccessMessage(null);
 
       // 画像がある場合はData URLに変換
       let photoURL = user?.photoURL;
@@ -89,52 +103,67 @@ export default function ProfileSetupPage() {
       // プロフィールを更新
       await updateUserProfile(displayName.trim(), photoURL || undefined);
 
-      // プロフィール設定完了フラグを保存
-      await markProfileSetupCompleted();
+      setSuccessMessage('プロフィールを更新しました');
 
-      // ダッシュボードへ遷移
-      navigate('/dashboard', { replace: true });
+      // 1秒後にモーダルを閉じる
+      setTimeout(() => {
+        onClose();
+      }, 1000);
     } catch (err) {
-      console.error('プロフィール設定エラー:', err);
-      setError('プロフィールの設定に失敗しました');
+      console.error('プロフィール更新エラー:', err);
+      setError('プロフィールの更新に失敗しました');
     } finally {
-      setIsSubmitting(false);
+      setIsSaving(false);
     }
   };
 
-  /**
-   * スキップしてダッシュボードへ
-   */
-  const handleSkip = () => {
-    navigate('/dashboard', { replace: true });
-  };
+  if (!isOpen) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={handleClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* ヘッダー */}
-        <div className="text-center mb-8">
-          <div className="bg-[#1A4472] text-white rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">アカウント情報を編集</h2>
+            <button
+              onClick={handleClose}
+              disabled={isSaving}
+              className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">プロフィール設定</h1>
-          <p className="text-gray-600">あなたの情報を設定してください</p>
         </div>
 
-        {/* エラーメッセージ */}
-        {error && (
-          <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3 mb-6 flex items-center gap-2">
-            <svg className="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <p className="text-sm text-red-900">{error}</p>
-          </div>
-        )}
+        {/* コンテンツ */}
+        <div className="p-6 space-y-6">
+          {/* エラー・成功メッセージ */}
+          {error && (
+            <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3 flex items-center gap-2">
+              <svg className="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <p className="text-sm text-red-900">{error}</p>
+            </div>
+          )}
+          {successMessage && (
+            <div className="bg-green-50 border-2 border-green-300 rounded-lg p-3 flex items-center gap-2">
+              <svg className="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <p className="text-sm text-green-900">{successMessage}</p>
+            </div>
+          )}
 
-        {/* フォーム */}
-        <form onSubmit={handleSubmit} className="space-y-6">
           {/* プロフィール画像 */}
           <div className="flex flex-col items-center">
             <input
@@ -144,7 +173,7 @@ export default function ProfileSetupPage() {
               onChange={handleImageChange}
               className="hidden"
             />
-            <div className="relative mb-3">
+            <div className="relative mb-4">
               {photoPreview ? (
                 <img
                   src={photoPreview}
@@ -189,7 +218,6 @@ export default function ProfileSetupPage() {
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               required
             />
-            <p className="text-xs text-gray-500 mt-1">アプリ内で表示される名前です</p>
           </div>
 
           {/* メールアドレス（読み取り専用） */}
@@ -204,40 +232,39 @@ export default function ProfileSetupPage() {
               disabled
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
             />
+            <p className="text-xs text-gray-500 mt-1">メールアドレスは変更できません</p>
           </div>
+        </div>
 
-          {/* ボタン */}
-          <div className="space-y-3 pt-4">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  設定中...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  設定を完了
-                </>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSkip}
-              disabled={isSubmitting}
-              className="w-full bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              後で設定する
-            </button>
-          </div>
-        </form>
+        {/* フッター */}
+        <div className="p-6 border-t border-gray-200 space-y-3">
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isSaving ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                保存中...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                保存
+              </>
+            )}
+          </button>
+          <button
+            onClick={handleClose}
+            disabled={isSaving}
+            className="w-full bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            キャンセル
+          </button>
+        </div>
       </div>
     </div>
   );

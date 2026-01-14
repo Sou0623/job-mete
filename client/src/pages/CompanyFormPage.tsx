@@ -81,6 +81,11 @@ export default function CompanyFormPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 二重送信防止: 既に送信中の場合は処理を中断
+    if (isSubmitting) {
+      return;
+    }
+
     if (!user || !companyName.trim()) {
       setError('企業名を入力してください');
       return;

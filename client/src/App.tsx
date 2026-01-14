@@ -3,6 +3,7 @@ import '@/services/firebase'; // Firebase初期化とEmulator接続
 import { AuthProvider } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/common/ProtectedRoute';
 import LoginPage from '@/pages/LoginPage';
+import ProfileSetupPage from '@/pages/ProfileSetupPage';
 import DashboardPage from '@/pages/DashboardPage';
 import CompaniesPage from '@/pages/CompaniesPage';
 import CompanyDetailPage from '@/pages/CompanyDetailPage';
@@ -20,6 +21,16 @@ export default function App() {
         <Routes>
           {/* ログインページ（認証不要） */}
           <Route path="/login" element={<LoginPage />} />
+
+          {/* プロフィール設定ページ（認証必須、プロフィール未設定時のみアクセス可能） */}
+          <Route
+            path="/profile-setup"
+            element={
+              <ProtectedRoute requireProfileSetup={false}>
+                <ProfileSetupPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* ダッシュボード（認証必須） */}
           <Route

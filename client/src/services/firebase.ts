@@ -49,7 +49,7 @@ if (import.meta.env.DEV) {
 
     // Functions Emulator に接続
     connectFunctionsEmulator(functions, 'localhost', 5001);
-  } catch (error) {
+  } catch {
     // 既に接続済みの場合はエラーが発生するが、無視する
   }
 }

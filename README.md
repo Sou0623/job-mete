@@ -54,6 +54,7 @@ Job Meteは、これらの課題を解決する統合プラットフォームで
 ### 主要画面
 
 - **ダッシュボード**: 企業数、予定数、最近の活動を一覧表示
+- **プロフィール設定**: ユーザー情報（大学・学年・氏名）の登録・編集
 - **企業一覧**: 登録企業をカード形式で表示、検索・フィルタリング機能
 - **企業詳細**: AI分析結果、企業情報、関連予定を表示
 - **予定管理**: カレンダービュー、予定の追加・編集・削除
@@ -63,7 +64,14 @@ Job Meteは、これらの課題を解決する統合プラットフォームで
 
 ## ✨ 主要機能
 
-### 1. 企業管理
+### 1. 認証・プロフィール管理
+
+- 🔐 **Google認証**: Firebase Authenticationによる安全なログイン
+- 👤 **プロフィール設定**: 大学名・学年・氏名の登録・編集
+- ✏️ **アカウント編集**: ヘッダーからいつでもプロフィール更新可能
+- 🎓 **初回セットアップ**: 新規ユーザーは初回ログイン時にプロフィール入力
+
+### 2. 企業管理
 
 - 📝 **企業登録**: 企業名を入力するだけで自動分析
 - 🔍 **重複チェック**: 表記ゆれを吸収（株式会社の有無など）
@@ -71,14 +79,14 @@ Job Meteは、これらの課題を解決する統合プラットフォームで
 - 📊 **詳細表示**: 業界、特徴、求めるスキルなどを可視化
 - 🔄 **再分析**: 30日経過で最新情報に更新推奨
 
-### 2. 予定管理
+### 3. 予定管理
 
 - 📅 **予定登録**: 面接・説明会などのスケジュール管理
 - 🗓️ **カレンダー連携**: Google Calendarと自動同期
 - ✏️ **結果記録**: 面接後に結果（通過/不合格）を記録
 - 🔔 **リマインダー**: 1時間前、1日前に自動通知
 
-### 3. 傾向分析
+### 4. 傾向分析
 
 - 📈 **業界分析**: 登録企業の業界分布を円グラフで可視化
 - 🏷️ **キーワード抽出**: 共通するキーワードをタグクラウド表示
@@ -98,6 +106,7 @@ Job Meteは、これらの課題を解決する統合プラットフォームで
 | [Tailwind CSS](https://tailwindcss.com/) | 3.4.x | スタイリング |
 | [React Router](https://reactrouter.com/) | 7.x | ルーティング |
 | [Vite](https://vitejs.dev/) | 7.x | ビルドツール |
+| [date-fns](https://date-fns.org/) | 4.x | 日付処理 |
 
 ### バックエンド
 
@@ -163,10 +172,36 @@ Job Meteは、これらの課題を解決する統合プラットフォームで
 
 ### データフロー
 
-1. **認証**: Firebase Authentication（Google OAuth）
+1. **認証・プロフィール**: Firebase Authentication（Google OAuth） → Firestore
 2. **企業登録**: Firestore → Cloud Functions → Gemini API
 3. **予定管理**: Firestore ⇄ Google Calendar API
 4. **傾向分析**: Firestore → Cloud Functions → Gemini API
+
+### データベース構造
+
+```
+firestore/
+└── users/{userId}/
+    ├── profile                  # ユーザープロフィール
+    │   ├── displayName         # 表示名
+    │   ├── email              # メールアドレス
+    │   ├── photoURL           # プロフィール画像URL
+    │   ├── university         # 大学名
+    │   ├── grade             # 学年
+    │   ├── fullName          # 氏名
+    │   ├── createdAt         # 作成日時
+    │   └── updatedAt         # 更新日時
+    ├── companies/{companyId}    # 企業データ
+    │   ├── companyName
+    │   ├── normalizedName
+    │   ├── analysis           # AI分析結果
+    │   └── ...
+    └── events/{eventId}         # 予定データ
+        ├── title
+        ├── eventType
+        ├── companyId
+        └── ...
+```
 
 ---
 
@@ -224,14 +259,20 @@ INPUT_LIMITS = {
 #### 5. Firebase Security Rules
 
 ```javascript
-// Firestoreセキュリティルール
+// Firestoreセキュリティルール（firestore.rules）
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // ユーザーは自分のデータのみアクセス可能
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
+    match /users/{userId} {
+      // プロフィールドキュメント
+      match /profile {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      // 企業・予定データ
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
   }
 }
@@ -266,10 +307,16 @@ npm run test:e2e:ui
 ### テスト結果
 
 ```
-Test Files  4 passed (4)
-Tests       58 passed (58)
-Duration    3.17s
+Test Files  5 passed (5)
+Tests       60+ passed
+Duration    ~3s
 ```
+
+**カバレッジ例:**
+- `utils/validation.ts`: 100%
+- `utils/normalizeCompanyName.ts`: 100%
+- `utils/dateFormatter.ts`: 100%
+- `components/`: 85%+
 
 ### テスト戦略
 
@@ -283,9 +330,10 @@ Duration    3.17s
 
 ### 前提条件
 
-- Node.js: v18.0.0 以上
+- Node.js: v18.0.0 以上（推奨: v22.x）
 - npm: v9.0.0 以上
 - Git: v2.0.0 以上
+- Firebase CLI: 最新版（`npm install -g firebase-tools`）
 
 ### セットアップ手順
 
@@ -308,34 +356,73 @@ npm install
 cd ..
 ```
 
-#### 3. 環境変数の設定
+#### 3. Firebaseプロジェクトの設定
 
 ```bash
-# .env.example をコピー
-cp .env.example .env.local
+# Firebase CLIでログイン
+firebase login
 
-# .env.local を編集してAPIキーを設定
-# - Firebase API Key
-# - Gemini API Key
-# - Google Calendar API Key (オプション)
+# Firebaseプロジェクトを初期化（既存プロジェクトを使用する場合）
+firebase use --add
+
+# または新規プロジェクトを作成
+# https://console.firebase.google.com/ でプロジェクト作成後
+firebase use [プロジェクトID]
 ```
 
-詳細な環境変数の取得方法は `.env.example` ファイル内のコメントを参照してください。
+#### 4. 環境変数の設定
 
-#### 4. 開発サーバーの起動
+```bash
+# クライアント側
+cp client/.env.example client/.env.local
+# client/.env.local を編集してFirebase設定を追加
+
+# Functions側
+cp functions/.env.example functions/.env.local
+# functions/.env.local を編集してGemini API Keyを追加
+```
+
+**必要な環境変数:**
+- `VITE_FIREBASE_API_KEY`: Firebase API Key
+- `VITE_FIREBASE_AUTH_DOMAIN`: Firebase Auth Domain
+- `VITE_FIREBASE_PROJECT_ID`: Firebase Project ID
+- `VITE_FIREBASE_STORAGE_BUCKET`: Firebase Storage Bucket
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`: Firebase Messaging Sender ID
+- `VITE_FIREBASE_APP_ID`: Firebase App ID
+- `GEMINI_API_KEY`: Gemini API Key（Functions側）
+
+詳細な取得方法は `docs/GEMINI_API_KEY_SETUP.md` を参照してください。
+
+#### 5. Firestoreセキュリティルールのデプロイ（初回のみ）
+
+```bash
+# セキュリティルールをデプロイ
+firebase deploy --only firestore:rules
+```
+
+#### 6. 開発サーバーの起動
+
+**推奨: 3つのターミナルを使用**
 
 ```bash
 # ターミナル1: Firebase Emulators
 firebase emulators:start
 
-# ターミナル2: Functions自動ビルド
-cd functions && npm run build -- --watch
+# ターミナル2: Functions自動ビルド（別ターミナル）
+cd functions
+npm run build:watch
 
-# ターミナル3: React開発サーバー
+# ターミナル3: React開発サーバー（別ターミナル）
+cd client
 npm run dev
 ```
 
 ブラウザで `http://localhost:5173` を開く
+
+**Emulator UIアクセス:**
+- Firebase Emulator UI: `http://localhost:4000`
+- Firestore Emulator: `http://localhost:8080`
+- Functions Emulator: `http://localhost:5001`
 
 ---
 
@@ -343,30 +430,58 @@ npm run dev
 
 ```
 job-mete/
-├── client/src/
-│   ├── components/      # Reactコンポーネント
-│   │   ├── common/      # 汎用コンポーネント
-│   │   ├── layout/      # レイアウト
-│   │   ├── companies/   # 企業関連
-│   │   ├── events/      # 予定関連
-│   │   └── trends/      # 傾向分析
-│   ├── pages/           # ページコンポーネント
-│   ├── hooks/           # カスタムHooks
-│   ├── utils/           # ユーティリティ関数
-│   │   ├── validation.ts      # バリデーション
-│   │   ├── dateFormatter.ts   # 日付フォーマット
-│   │   └── normalizeCompanyName.ts
-│   ├── services/        # 外部サービス連携
-│   └── types/           # TypeScript型定義
-├── functions/           # Firebase Functions
-│   ├── src/handlers/    # APIハンドラー
-│   ├── src/services/    # サービスレイヤー
-│   └── src/prompts/     # Geminiプロンプト
-├── e2e/                 # E2Eテスト
-├── .env.example         # 環境変数サンプル
-├── .gitignore           # Git除外設定
-├── SECURITY.md          # セキュリティガイド
-└── README.md            # このファイル
+├── client/
+│   ├── src/
+│   │   ├── components/      # Reactコンポーネント
+│   │   │   ├── common/      # 汎用コンポーネント
+│   │   │   │   ├── Button.tsx
+│   │   │   │   ├── Input.tsx
+│   │   │   │   ├── UserModal.tsx         # ユーザーメニュー
+│   │   │   │   ├── AccountEditModal.tsx  # アカウント編集モーダル
+│   │   │   │   └── ProtectedRoute.tsx
+│   │   │   ├── layout/      # レイアウト
+│   │   │   │   └── Header.tsx
+│   │   │   ├── companies/   # 企業関連
+│   │   │   ├── events/      # 予定関連
+│   │   │   └── trends/      # 傾向分析
+│   │   ├── pages/           # ページコンポーネント
+│   │   │   ├── LoginPage.tsx
+│   │   │   ├── ProfileSetupPage.tsx    # プロフィール設定
+│   │   │   ├── DashboardPage.tsx
+│   │   │   ├── CompaniesPage.tsx
+│   │   │   ├── EventsPage.tsx
+│   │   │   └── TrendsPage.tsx
+│   │   ├── contexts/        # Reactコンテキスト
+│   │   │   └── AuthContext.tsx         # 認証・プロフィール管理
+│   │   ├── hooks/           # カスタムHooks
+│   │   ├── utils/           # ユーティリティ関数
+│   │   │   ├── validation.ts
+│   │   │   ├── dateFormatter.ts
+│   │   │   └── normalizeCompanyName.ts
+│   │   ├── services/        # 外部サービス連携
+│   │   │   └── firebase.ts
+│   │   └── types/           # TypeScript型定義
+│   │       └── user.ts      # ユーザー・プロフィール型定義
+│   └── package.json
+├── functions/               # Firebase Functions
+│   ├── src/
+│   │   ├── handlers/        # APIハンドラー
+│   │   ├── services/        # サービスレイヤー
+│   │   │   └── geminiService.ts
+│   │   └── prompts/         # Geminiプロンプト
+│   └── package.json
+├── docs/                    # ドキュメント
+│   ├── implementation-plan.md
+│   ├── progress-report.md
+│   ├── google-calendar-setup.md
+│   └── GEMINI_API_KEY_SETUP.md
+├── e2e/                     # E2Eテスト
+├── firestore.rules          # Firestoreセキュリティルール
+├── .env.example             # 環境変数サンプル
+├── .gitignore               # Git除外設定
+├── CLAUDE.md                # Claude Code設定
+├── SECURITY.md              # セキュリティガイド
+└── README.md                # このファイル
 ```
 
 ---
@@ -452,21 +567,60 @@ const TrendsPage = lazy(() => import('@/pages/TrendsPage'));
 
 ---
 
+## 📚 追加ドキュメント
+
+- [CLAUDE.md](CLAUDE.md) - Claude Code設定ファイル（コーディング規約）
+- [SECURITY.md](SECURITY.md) - セキュリティ対策の詳細
+- [docs/implementation-plan.md](docs/implementation-plan.md) - 実装計画
+- [docs/progress-report.md](docs/progress-report.md) - 進捗レポート
+- [docs/google-calendar-setup.md](docs/google-calendar-setup.md) - Google Calendar連携セットアップ
+- [docs/GEMINI_API_KEY_SETUP.md](docs/GEMINI_API_KEY_SETUP.md) - Gemini API Keyセットアップ
+
+---
+
+## 🎯 今後の実装予定
+
+- [ ] Google Calendar完全連携（現在は基本機能のみ）
+- [ ] リアルタイムリマインダー通知
+- [ ] エクスポート機能（PDF、CSV）
+- [ ] モバイルアプリ版（React Native）
+- [ ] 複数ユーザー間での企業情報共有
+- [ ] 面接質問データベース機能
+
+---
+
 ## 👨‍💻 作成者
 
 - GitHub: [@Sou0623](https://github.com/Sou0623)
+- プロジェクト: Job Mete（ジョブメイト）
 
 ---
 
 ## 🙏 謝辞
 
+このプロジェクトは以下のオープンソース技術を活用しています：
+
+- [React](https://react.dev/) - UIフレームワーク
+- [TypeScript](https://www.typescriptlang.org/) - 型安全な開発
 - [Firebase](https://firebase.google.com/) - バックエンドインフラ
 - [Gemini API](https://ai.google.dev/) - AI分析機能
 - [Tailwind CSS](https://tailwindcss.com/) - スタイリングフレームワーク
-- [React](https://react.dev/) - UIフレームワーク
+- [Vite](https://vitejs.dev/) - 高速ビルドツール
+- [Vitest](https://vitest.dev/) - テストフレームワーク
+- [Playwright](https://playwright.dev/) - E2Eテスト
+
+---
+
+## 📄 ライセンス
+
+このプロジェクトはMITライセンスの下で公開されています。詳細は[LICENSE](LICENSE)を参照してください。
 
 ---
 
 **Made with ❤️ for Job Seekers**
 
 プロジェクトに⭐️をつけていただけると励みになります！
+
+---
+
+**最終更新: 2025年11月** | バージョン: 1.0.0

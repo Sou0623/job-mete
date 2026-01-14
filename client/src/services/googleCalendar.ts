@@ -2,8 +2,6 @@
  * Google Calendar API統合サービス
  */
 
-import {auth} from "./firebase";
-
 /**
  * Google Calendar APIのスコープ
  */
@@ -214,7 +212,7 @@ export async function deleteCalendarEvent(
   }
 
   try {
-    await gapi.client.calendar.events.delete({
+    await gapi.client.calendar.events.remove({
       calendarId: "primary",
       eventId: eventId,
     });

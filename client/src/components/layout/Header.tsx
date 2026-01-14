@@ -22,7 +22,7 @@ export default function Header({ onUserIconClick }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white border-b-2 border-gray-100 sticky top-0 z-50 shadow-sm backdrop-blur-sm bg-opacity-95">
+    <header className="bg-white border-b-2 border-gray-100 sticky top-0 z-50 shadow-sm backdrop-blur-sm bg-opacity-95" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex items-center justify-between">
           {/* ロゴ */}

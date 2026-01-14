@@ -322,7 +322,7 @@ export const analyzeTrends = onCall<
       // 4. Gemini APIでサマリー生成
       const genAI = getGeminiClient();
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash-lite",
         generationConfig: {
           responseMimeType: "application/json",
           temperature: 0.7,
@@ -409,7 +409,7 @@ export const analyzeTrends = onCall<
         reviewStats, // レビュー統計データ
         analyzedAt: now,
         companyCount: companies.length,
-        modelUsed: "gemini-2.0-flash-exp",
+        modelUsed: "gemini-2.5-flash-lite",
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });

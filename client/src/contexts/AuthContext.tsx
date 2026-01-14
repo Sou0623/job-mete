@@ -13,7 +13,8 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import { auth } from '@/services/firebase';
+import { auth, db } from '@/services/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 /**
  * 認証コンテキストの型定義
@@ -21,9 +22,11 @@ import { auth } from '@/services/firebase';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  profileSetupCompleted: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   updateUserProfile: (displayName: string, photoURL?: string) => Promise<void>;
+  markProfileSetupCompleted: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,11 +39,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileSetupCompleted, setProfileSetupCompleted] = useState(false);
 
   useEffect(() => {
     // Firebase Authentication の認証状態を監視
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+
+      if (user) {
+        // プロフィール設定完了フラグを確認
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        setProfileSetupCompleted(userDoc.exists() && userDoc.data()?.profileSetupCompleted === true);
+      } else {
+        setProfileSetupCompleted(false);
+      }
+
       setLoading(false);
     });
 
@@ -80,8 +94,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser({ ...auth.currentUser });
   };
 
+  /**
+   * プロフィール設定完了フラグを保存
+   */
+  const markProfileSetupCompleted = async () => {
+    if (!auth.currentUser) {
+      throw new Error('ログインしていません');
+    }
+
+    const userDocRef = doc(db, 'users', auth.currentUser.uid);
+    await setDoc(userDocRef, {
+      profileSetupCompleted: true,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+
+    setProfileSetupCompleted(true);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateUserProfile }}>
+    <AuthContext.Provider value={{ user, loading, profileSetupCompleted, login, logout, updateUserProfile, markProfileSetupCompleted }}>
       {children}
     </AuthContext.Provider>
   );
@@ -93,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  * @returns 認証コンテキスト
  * @throws AuthProvider の外で使用された場合にエラー
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

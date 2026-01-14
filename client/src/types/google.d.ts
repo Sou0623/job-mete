@@ -62,7 +62,7 @@ declare namespace gapi {
           };
         }): Promise<void>;
 
-        function delete(args: {
+        function remove(args: {
           calendarId: string;
           eventId: string;
         }): Promise<void>;

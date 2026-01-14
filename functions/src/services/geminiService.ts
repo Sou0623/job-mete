@@ -5,6 +5,7 @@
 import {GoogleGenerativeAI} from "@google/generative-ai";
 import {generateCompanyAnalysisPrompt} from "../prompts/companyAnalysisPrompt";
 import {retryWithBackoff} from "../utils/retry";
+import {quotaMonitor} from "../utils/apiQuotaMonitor";
 import type {CompanyAnalysis} from "../types";
 
 /**
@@ -39,12 +40,21 @@ export async function analyzeCompanyWithGemini(
     rawResponse: string;
   };
 }> {
+  // クォータチェック
+  if (!quotaMonitor.canMakeRequest()) {
+    throw new Error(
+      "Gemini APIの日次クォータ制限に達しています。" +
+      "明日（太平洋標準時 午前0時以降）に再度お試しください。"
+    );
+  }
+
   // Gemini APIクライアントを初期化
   const genAI = getGeminiClient();
 
-  // モデルを取得（Gemini 2.0 Flash with Grounding）
+  // モデルを取得（Gemini 2.5 Flash-Lite - 軽量版、無料枠対応）
+  // 参考: https://ai.google.dev/gemini-api/docs/models/gemini
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash-exp",
+    model: "gemini-2.5-flash-lite",
     generationConfig: {
       responseMimeType: "application/json",
       temperature: 0.7,
@@ -62,9 +72,19 @@ export async function analyzeCompanyWithGemini(
   console.log("===========================================================");
 
   // Gemini APIを呼び出し（リトライ付き）
-  const result = await retryWithBackoff(async () => {
-    return await model.generateContent(prompt);
-  }, 3, 1000);
+  let result;
+  try {
+    result = await retryWithBackoff(async () => {
+      return await model.generateContent(prompt);
+    }, 3, 1000);
+
+    // 成功を記録
+    quotaMonitor.recordSuccess();
+  } catch (error) {
+    // エラーを記録
+    quotaMonitor.recordError(error as Error);
+    throw error;
+  }
 
   const response = result.response;
   const text = response.text();
@@ -86,7 +106,7 @@ export async function analyzeCompanyWithGemini(
 
   // メタデータを取得
   const metadata = {
-    modelUsed: "gemini-2.0-flash-exp",
+    modelUsed: "gemini-2.5-flash-lite",
     tokensUsed: 0, // Gemini APIはトークン数を返さないため0に設定
     searchSources: [], // Groundingの検索ソースは後で実装
     prompt, // デバッグ用：送信したプロンプト

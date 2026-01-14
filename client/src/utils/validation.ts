@@ -118,7 +118,8 @@ export function sanitizeInput(value: string): string {
   // HTMLタグを除去（<>で囲まれた部分を削除）
   sanitized = sanitized.replace(/<[^>]*>/g, '');
 
-  // 制御文字を除去
+  // 制御文字を除去（セキュリティ上重要なので許可）
+  // eslint-disable-next-line no-control-regex
   sanitized = sanitized.replace(/[\x00-\x1F\x7F]/g, '');
 
   // 連続する空白を1つに

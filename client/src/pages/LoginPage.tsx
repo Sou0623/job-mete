@@ -36,6 +36,8 @@ export default function LoginPage() {
   const [isLoginProcessing, setIsLoginProcessing] = useState(false);
 
   useEffect(() => {
+    // ログイン成功後はダッシュボードへ遷移
+    // プロフィール未設定の場合は ProtectedRoute が自動的に /profile-setup へリダイレクト
     if (!isAuthLoading && user) navigate('/dashboard');
   }, [user, isAuthLoading, navigate]);
 

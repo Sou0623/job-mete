@@ -56,9 +56,8 @@ export interface CreateEventResponse {
 // analyzeTrends
 // ============================================================
 
-export interface AnalyzeTrendsRequest {
-  // パラメータなし
-}
+// パラメータなし（空のオブジェクトとして定義）
+export type AnalyzeTrendsRequest = Record<string, never>;
 
 export interface AnalyzeTrendsResponse {
   success: boolean;

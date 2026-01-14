@@ -13,6 +13,7 @@ import { db, functions } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/layout/Header';
 import UserModal from '@/components/common/UserModal';
+import AnalysisProgress from '@/components/companies/AnalysisProgress';
 import type { Company } from '@/types/company';
 
 export default function CompanyFormPage() {
@@ -25,6 +26,8 @@ export default function CompanyFormPage() {
   const [error, setError] = useState<string | null>(null);
   const [duplicateCompany, setDuplicateCompany] = useState<Company | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [analysisStep, setAnalysisStep] = useState<'registering' | 'analyzing' | 'completed'>('registering');
+  const [analysisProgress, setAnalysisProgress] = useState(0);
 
   /**
    * 企業名を正規化
@@ -95,21 +98,44 @@ export default function CompanyFormPage() {
       setIsSubmitting(true);
       setError(null);
 
+      // ステップ1: 企業登録開始
+      setAnalysisStep('registering');
+      setAnalysisProgress(10);
+
       // createCompany Function を呼び出し
       const createCompanyFn = httpsCallable<
         { companyName: string },
         { success: boolean; companyId?: string; isDuplicate?: boolean; error?: string }
       >(functions, 'createCompany');
 
+      // ステップ2: API呼び出し開始
+      setAnalysisProgress(30);
+      setAnalysisStep('analyzing');
+
       const result = await createCompanyFn({
         companyName: companyName.trim(),
       });
 
+      // ステップ3: 分析中（プログレス更新）
+      setAnalysisProgress(70);
+
+      // 少し待ってからプログレスを更新（視覚的なフィードバック）
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setAnalysisProgress(90);
+
       if (result.data.success && result.data.companyId) {
+        // ステップ4: 完了
+        setAnalysisProgress(100);
+        setAnalysisStep('completed');
+
+        // 完了画面を少し表示してからリダイレクト
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
         // 詳細ページにリダイレクト
         navigate(`/companies/${result.data.companyId}`);
       } else {
         setError(result.data.error || '企業の登録に失敗しました');
+        setAnalysisProgress(0);
       }
     } catch (err: unknown) {
       console.error('企業登録エラー:', err);
@@ -127,6 +153,7 @@ export default function CompanyFormPage() {
       } else {
         setError('予期しないエラーが発生しました。もう一度お試しください。');
       }
+      setAnalysisProgress(0);
     } finally {
       setIsSubmitting(false);
     }
@@ -154,10 +181,23 @@ export default function CompanyFormPage() {
 
       {/* メインコンテンツ */}
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">企業を追加</h2>
+        {/* 分析プログレス表示（分析中のみ） */}
+        {isSubmitting && (
+          <div className="mb-6">
+            <AnalysisProgress
+              currentStep={analysisStep}
+              companyName={companyName}
+              progress={analysisProgress}
+            />
+          </div>
+        )}
 
-          <form onSubmit={handleSubmit}>
+        {/* 企業登録フォーム（分析中は非表示） */}
+        {!isSubmitting && (
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">企業を追加</h2>
+
+            <form onSubmit={handleSubmit}>
             {/* 企業名入力 */}
             <div className="mb-4 sm:mb-6">
               <label
@@ -239,14 +279,15 @@ export default function CompanyFormPage() {
             )}
           </form>
 
-          {/* 注意事項 */}
-          <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
-            <p className="text-[#1A4472] text-xs sm:text-sm">
-              <strong>💡 Gemini AI分析:</strong> 企業登録時に、Gemini AIが自動的に企業情報を分析します。
-              分析には数秒かかる場合があります。
-            </p>
+            {/* 注意事項 */}
+            <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+              <p className="text-[#1A4472] text-xs sm:text-sm">
+                <strong>💡 Gemini AI分析:</strong> 企業登録時に、Gemini AIが自動的に企業情報を分析します。
+                分析には数秒かかる場合があります。
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* ユーザー設定モーダル */}

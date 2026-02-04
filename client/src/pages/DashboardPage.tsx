@@ -178,7 +178,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header onUserIconClick={() => setShowUserModal(true)} />
-     <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8 pt-[30px] sm:pt-4">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8 pt-[30px] sm:pt-4">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {/* メインカラム (中央) */}
           <div className="lg:col-span-3 space-y-4 sm:space-y-6 lg:space-y-8">
@@ -231,7 +231,7 @@ export default function DashboardPage() {
                 <div className={`rounded-lg p-3 sm:p-4 mx-auto w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center mb-3 sm:mb-4 transition-transform text-white ${
                   reviewedEventsCount < 3
                     ? 'bg-gray-400'
-                    : 'bg-[#1A4472] group-hover:scale-110'
+                    : 'bg-[#855896] group-hover:scale-110'
                 }`}>
                   <Icons.Chart className="w-6 h-6 sm:w-8 sm:h-8" />
                 </div>

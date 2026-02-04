@@ -13,10 +13,14 @@ import { useCompanies } from '@/hooks/useCompanies';
 import { useEvents } from '@/hooks/useEvents';
 import Header from '@/components/layout/Header';
 import UserModal from '@/components/common/UserModal';
+import TrendAnalysisProgress from '@/components/trends/TrendAnalysisProgress';
 import type { AnalyzeTrendsRequest, AnalyzeTrendsResponse } from '@/types';
 
 // サイドバーの選択項目
 type SidebarSection = 'overview' | 'industry' | 'match';
+
+// 分析ステップ
+type AnalysisStep = 'collecting' | 'analyzing' | 'generating' | 'completed';
 
 export default function TrendsPage() {
   const navigate = useNavigate();
@@ -28,6 +32,10 @@ export default function TrendsPage() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedSection, setSelectedSection] = useState<SidebarSection>('overview');
   const [hoveredOthers, setHoveredOthers] = useState(false);
+
+  // プログレス表示用の状態
+  const [analysisStep, setAnalysisStep] = useState<AnalysisStep>('collecting');
+  const [analysisProgress, setAnalysisProgress] = useState(0);
 
   /**
    * レビュー済み予定数を計算
@@ -102,6 +110,17 @@ export default function TrendsPage() {
       setIsAnalyzing(true);
       setError(null);
 
+      // ステップ1: データ収集
+      setAnalysisStep('collecting');
+      setAnalysisProgress(10);
+      await new Promise((resolve) => setTimeout(resolve, 800)); // データ収集のシミュレーション
+
+      setAnalysisProgress(25);
+
+      // ステップ2: AI分析実行
+      setAnalysisStep('analyzing');
+      setAnalysisProgress(40);
+
       const analyzeTrendsFn = httpsCallable<AnalyzeTrendsRequest, AnalyzeTrendsResponse>(
         functions,
         'analyzeTrends'
@@ -109,11 +128,25 @@ export default function TrendsPage() {
 
       const result = await analyzeTrendsFn({});
 
-      if (result.data.success) {
-        console.log('傾向分析完了:', result.data);
-      } else {
+      if (!result.data.success) {
         setError('傾向分析に失敗しました');
+        return;
       }
+
+      console.log('傾向分析完了:', result.data);
+      setAnalysisProgress(70);
+
+      // ステップ3: レポート生成
+      setAnalysisStep('generating');
+      setAnalysisProgress(85);
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // レポート生成のシミュレーション
+
+      // ステップ4: 完了
+      setAnalysisStep('completed');
+      setAnalysisProgress(100);
+
+      // 完了表示を少し見せてから通常表示に戻る
+      await new Promise((resolve) => setTimeout(resolve, 1500));
     } catch (err: unknown) {
       console.error('傾向分析エラー:', err);
 
@@ -159,9 +192,19 @@ export default function TrendsPage() {
       <Header onUserIconClick={() => setShowUserModal(true)} />
 
       {/* メインコンテンツ */}
-    <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* ページヘッダー */}
-        <div className="flex items-center justify-between mb-6">
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* 分析中はプログレス表示 */}
+        {isAnalyzing ? (
+          <TrendAnalysisProgress
+            currentStep={analysisStep}
+            progress={analysisProgress}
+            companyCount={companies.length}
+            reviewCount={reviewedEventsCount}
+          />
+        ) : (
+          <>
+            {/* ページヘッダー */}
+            <div className="flex items-center justify-between mb-6">
        <div>
           <h2 className="text-4xl font-bold text-[#1A4472]">
             傾向分析
@@ -872,6 +915,8 @@ export default function TrendsPage() {
               「傾向を分析」ボタンをクリックして、志望傾向を分析しましょう
             </p>
           </div>
+        )}
+          </>
         )}
       </main>
 

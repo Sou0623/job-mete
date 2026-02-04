@@ -10,6 +10,7 @@ import { FirebaseError } from 'firebase/app';
 import { functions } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/layout/Header';
+import EventSubmitProgress from '@/components/events/EventSubmitProgress';
 import {
   initializeGoogleCalendar,
   authenticateGoogleCalendar,
@@ -21,6 +22,8 @@ import type {
   CreateEventRequest,
   CreateEventResponse,
 } from '@/types';
+
+type SubmitStep = 'validating' | 'registering' | 'syncing' | 'completed';
 
 export default function EventFormPage() {
   const { user } = useAuth();
@@ -38,6 +41,10 @@ export default function EventFormPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [calendarInitialized, setCalendarInitialized] = useState(false);
+
+  // プログレス表示用の状態
+  const [submitStep, setSubmitStep] = useState<SubmitStep>('validating');
+  const [submitProgress, setSubmitProgress] = useState(0);
 
   /**
    * Google Calendar APIの初期化
@@ -99,40 +106,14 @@ export default function EventFormPage() {
       setIsSubmitting(true);
       setError(null);
 
-      // Googleカレンダー同期の前処理
-      let calendarEventId: string | undefined;
-      if (syncToCalendar) {
-        try {
-          // トークンがない場合は認証
-          if (!hasValidToken()) {
-            await authenticateGoogleCalendar();
-          }
+      // ステップ1: 入力内容確認
+      setSubmitStep('validating');
+      setSubmitProgress(10);
+      await new Promise((resolve) => setTimeout(resolve, 500)); // バリデーション処理のシミュレーション
 
-          // カレンダーイベントを作成
-          calendarEventId = await createCalendarEvent({
-            companyName: companyName.trim(),
-            eventType,
-            startTime: new Date(date).toISOString(),
-            endTime: new Date(endDate).toISOString(),
-            location: location.trim(),
-            memo: memo.trim(),
-          });
-
-          console.log(
-            '[EventFormPage] カレンダーイベント作成成功:',
-            calendarEventId
-          );
-        } catch (calendarError) {
-          console.error(
-            '[EventFormPage] カレンダー同期エラー:',
-            calendarError
-          );
-          // カレンダー同期エラーは警告のみ、予定登録は続行
-          setError(
-            'カレンダー同期に失敗しましたが、予定は登録されます'
-          );
-        }
-      }
+      // ステップ2: 予定登録
+      setSubmitStep('registering');
+      setSubmitProgress(syncToCalendar ? 30 : 50);
 
       // createEvent Function を呼び出し
       const createEventFn = httpsCallable<
@@ -154,12 +135,61 @@ export default function EventFormPage() {
         syncToCalendar,
       });
 
-      if (result.data.success && result.data.eventId) {
-        // 詳細ページにリダイレクト
-        navigate(`/events/${result.data.eventId}`);
-      } else {
+      if (!result.data.success || !result.data.eventId) {
         setError('予定の登録に失敗しました');
+        return;
       }
+
+      setSubmitProgress(syncToCalendar ? 60 : 90);
+
+      // Googleカレンダー同期の処理
+      let calendarEventId: string | undefined;
+      if (syncToCalendar) {
+        setSubmitStep('syncing');
+        setSubmitProgress(70);
+
+        try {
+          // トークンがない場合は認証
+          if (!hasValidToken()) {
+            await authenticateGoogleCalendar();
+          }
+
+          // カレンダーイベントを作成
+          calendarEventId = await createCalendarEvent({
+            companyName: companyName.trim(),
+            eventType,
+            startTime: new Date(date).toISOString(),
+            endTime: new Date(endDate).toISOString(),
+            location: location.trim(),
+            memo: memo.trim(),
+          });
+
+          console.log(
+            '[EventFormPage] カレンダーイベント作成成功:',
+            calendarEventId
+          );
+          setSubmitProgress(90);
+        } catch (calendarError) {
+          console.error(
+            '[EventFormPage] カレンダー同期エラー:',
+            calendarError
+          );
+          // カレンダー同期エラーは警告のみ、予定登録は続行
+          setError(
+            'カレンダー同期に失敗しましたが、予定は登録されます'
+          );
+        }
+      }
+
+      // ステップ3: 完了
+      setSubmitStep('completed');
+      setSubmitProgress(100);
+
+      // 完了表示を少し見せてからリダイレクト
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // 詳細ページにリダイレクト
+      navigate(`/events/${result.data.eventId}`);
     } catch (err: unknown) {
       console.error('予定登録エラー:', err);
 
@@ -195,8 +225,18 @@ export default function EventFormPage() {
 
       {/* メインコンテンツ */}
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">予定を登録</h2>
+        {/* 送信中はプログレス表示 */}
+        {isSubmitting ? (
+          <EventSubmitProgress
+            currentStep={submitStep}
+            companyName={companyName}
+            eventType={eventType}
+            progress={submitProgress}
+            syncToCalendar={syncToCalendar}
+          />
+        ) : (
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">予定を登録</h2>
 
           <form onSubmit={handleSubmit}>
             {/* 企業名入力 */}
@@ -415,7 +455,8 @@ export default function EventFormPage() {
               </button>
             </div>
           </form>
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );
